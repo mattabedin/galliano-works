@@ -11,5 +11,8 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
+  datasource: {
+    url: process.env.POSTGRES_PRISMA_URL!,
+  },
   adapter: () => new PrismaNeon({ connectionString: process.env.POSTGRES_PRISMA_URL! }),
 });
