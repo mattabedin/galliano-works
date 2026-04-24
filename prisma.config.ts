@@ -6,7 +6,8 @@ import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
 
-export default defineConfig({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default (defineConfig as any)({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
