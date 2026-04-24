@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+}
+
+model Subcontractor {
+  id       String  @id
+  name     String
+  trade    String
+  rate     Float
+  color    String
+  initials String
+
+  lineItems    LineItem[]
+  payrollItems PayrollItem[]
+  payHistory   PayHistory[]
+}
+
+model Invoice {
+  id      String @id
+  number  String @unique
+  client  String
+  address String
+  issued  String
+  due     String
+  source  String
+
+  lines LineItem[]
+}
+
+model LineItem {
+  id        String  @id
+  desc      String
+  invoice   Float
+  laborPct  Float
+  expenses  Float   @default(0)
+  status    String  @default("unassigned")
+  note      String?
+
+  invoiceId String
+  inv       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  subId String?
+  sub   Subcontractor? @relation(fields: [subId], references: [id])
+
+  payrollItems PayrollItem[]
+}
+
+model PayrollRun {
+  id        String        @id @default(cuid())
+  week      String
+  createdAt DateTime      @default(now())
+  items     PayrollItem[]
+}
+
+model PayrollItem {
+  id     String @id @default(cuid())
+  amount Float
+
+  payrollRunId String
+  run          PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+
+  lineItemId String
+  lineItem   LineItem @relation(fields: [lineItemId], references: [id])
+
+  subId String
+  sub   Subcontractor @relation(fields: [subId], references: [id])
+}
+
+model PayHistory {
+  id     String @id @default(cuid())
+  week   String
+  amount Float
+  items  Int
+
+  subId String
+  sub   Subcontractor @relation(fields: [subId], references: [id])
+}
