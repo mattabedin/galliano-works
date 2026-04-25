@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Invoice, Sub, PayHistory } from "@/lib/types";
+import { InvoiceRecordData } from "@/lib/invoice-types";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { CommandBar } from "@/components/layout/CommandBar";
 import { LoginScreen } from "@/components/screens/LoginScreen";
 import { DashboardScreen } from "@/components/screens/DashboardScreen";
 import { InvoicesScreen } from "@/components/screens/InvoicesScreen";
+import { InvoiceDetailScreen } from "@/components/screens/InvoiceDetailScreen";
 import { BoardScreen } from "@/components/screens/BoardScreen";
 import { ApprovalsScreen } from "@/components/screens/ApprovalsScreen";
 import { PayrollScreen } from "@/components/screens/PayrollScreen";
@@ -23,9 +26,9 @@ const ACCENT = "#c94a2a";
 type Role = "admin" | "subcontractor";
 type Page = "dashboard" | "invoices" | "board" | "approvals" | "payroll" | "earnings" | "expenses" | "profit";
 
-const PAGE_META: Record<Page, { title: string; sub: (state: { invoices: Invoice[]; subs: Sub[] }) => string }> = {
+const PAGE_META: Record<Page, { title: string; sub: (state: { invoices: Invoice[]; subs: Sub[]; invoiceRecords?: InvoiceRecordData[] }) => string }> = {
   dashboard: { title: "Overview",       sub: () => "Week of Apr 20 — Apr 26, 2026" },
-  invoices:  { title: "Invoices",       sub: ({ invoices }) => `${invoices.length} invoices · ${invoices.reduce((s, i) => s + i.lines.length, 0)} line items` },
+  invoices:  { title: "Invoices",       sub: ({ invoiceRecords }) => invoiceRecords ? `${invoiceRecords.length} invoice${invoiceRecords.length !== 1 ? "s" : ""} · ${invoiceRecords.reduce((s, i) => s + i.lineItems.length, 0)} line items` : "CSV import · work line management" },
   board:     { title: "Assignments",    sub: () => "Drag to distribute work" },
   approvals: { title: "Approvals",      sub: () => "Review before payroll" },
   payroll:   { title: "Payroll",        sub: () => "Weekly run" },
@@ -38,16 +41,20 @@ interface Props {
   initialInvoices: Invoice[];
   initialSubs: Sub[];
   initialPayHistory: PayHistory[];
+  initialInvoiceRecords: InvoiceRecordData[];
 }
 
-export function GallianoApp({ initialInvoices, initialSubs, initialPayHistory }: Props) {
+export function GallianoApp({ initialInvoices, initialSubs, initialPayHistory, initialInvoiceRecords }: Props) {
+  const router = useRouter();
   const [authed, setAuthed] = useState(false);
   const [role, setRole] = useState<Role>("admin");
   const [page, setPage] = useState<Page>("dashboard");
   const [cmdkOpen, setCmdkOpen] = useState(false);
   const [currentSubIdx, setCurrentSubIdx] = useState(0);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const invoiceRecords = initialInvoiceRecords;
   const subs = initialSubs;
   const payHistory = initialPayHistory;
 
@@ -113,9 +120,37 @@ export function GallianoApp({ initialInvoices, initialSubs, initialPayHistory }:
 
   const meta = PAGE_META[page];
 
+  function refreshInvoiceRecords() {
+    router.refresh();
+  }
+
+  const selectedInvoice = selectedInvoiceId
+    ? invoiceRecords.find((r) => r.id === selectedInvoiceId) || null
+    : null;
+
+  const invoiceDetailTitle = selectedInvoice
+    ? selectedInvoice.invoiceNumber
+    : meta.title;
+  const invoiceDetailSub = selectedInvoice
+    ? `${selectedInvoice.customerName} · ${selectedInvoice.lineItems.length} line items`
+    : meta.sub({ invoices, subs, invoiceRecords });
+
   const pageContent = {
     dashboard: <DashboardScreen invoices={invoices} subs={subs} accent={ACCENT} goto={(p) => setPage(p as Page)} />,
-    invoices:  <InvoicesScreen invoices={invoices} subs={subs} />,
+    invoices: selectedInvoice ? (
+      <InvoiceDetailScreen
+        invoice={selectedInvoice}
+        subs={subs}
+        onBack={() => setSelectedInvoiceId(null)}
+        onRefresh={refreshInvoiceRecords}
+      />
+    ) : (
+      <InvoicesScreen
+        invoices={invoiceRecords}
+        onSelectInvoice={(id) => setSelectedInvoiceId(id)}
+        onRefresh={refreshInvoiceRecords}
+      />
+    ),
     board:     <BoardScreen invoices={invoices} subs={subs} onUpdate={setInvoices} />,
     approvals: <ApprovalsScreen invoices={invoices} subs={subs} onUpdate={setInvoices} />,
     payroll:   <PayrollScreen invoices={invoices} subs={subs} onUpdate={setInvoices} />,
@@ -128,7 +163,7 @@ export function GallianoApp({ initialInvoices, initialSubs, initialPayHistory }:
     <div style={{ width: "100%", height: "100%", display: "flex", background: "#faf8f4", fontSize: 14, color: "#1a1814" }}>
       <Sidebar
         page={page}
-        setPage={(p) => setPage(p as Page)}
+        setPage={(p) => { setPage(p as Page); setSelectedInvoiceId(null); }}
         accent={ACCENT}
         onRoleSwitch={handleRoleSwitch}
         onLogout={handleLogout}
@@ -136,12 +171,12 @@ export function GallianoApp({ initialInvoices, initialSubs, initialPayHistory }:
       />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <TopBar
-          title={meta.title}
-          sub={meta.sub({ invoices, subs })}
+          title={page === "invoices" ? invoiceDetailTitle : meta.title}
+          sub={page === "invoices" ? invoiceDetailSub : meta.sub({ invoices, subs, invoiceRecords })}
           onCmdk={() => setCmdkOpen(true)}
           accent={ACCENT}
         />
-        <div key={page} style={{ flex: 1, overflowY: "auto", position: "relative", animation: "page-in 280ms cubic-bezier(0.25, 1, 0.5, 1)" }}>
+        <div key={page + (selectedInvoiceId || "")} style={{ flex: 1, overflowY: "auto", position: "relative", animation: "page-in 280ms cubic-bezier(0.25, 1, 0.5, 1)" }}>
           {pageContent}
         </div>
       </div>

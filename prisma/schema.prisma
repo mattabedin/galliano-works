@@ -26,6 +26,7 @@ model Subcontractor {
   lineItems    LineItem[]
   payrollItems PayrollItem[]
   payHistory   PayHistory[]
+  workLines    WorkLine[]
 }
 
 model Invoice {
@@ -87,4 +88,102 @@ model PayHistory {
 
   subId String
   sub   Subcontractor @relation(fields: [subId], references: [id])
+}
+
+model ImportBatch {
+  id               String   @id @default(cuid())
+  sourceType       String   @default("csv")
+  originalFileName String?
+  uploadedByUserId String?
+  totalRows        Int      @default(0)
+  successfulRows   Int      @default(0)
+  failedRows       Int      @default(0)
+  status           String   @default("pending")
+  errorSummary     String?
+  createdAt        DateTime @default(now())
+
+  invoices InvoiceRecord[]
+  errors   ImportError[]
+}
+
+model ImportError {
+  id            String  @id @default(cuid())
+  importBatchId String
+  rowNumber     Int
+  fieldName     String?
+  errorMessage  String
+  rawValue      String?
+  createdAt     DateTime @default(now())
+
+  batch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+}
+
+model InvoiceRecord {
+  id                String   @id @default(cuid())
+  invoiceNumber     String
+  invoiceDate       String
+  customerName      String
+  customerEmail     String?
+  customerPhone     String?
+  customerAddress   String?
+  serviceAddress    String?
+  invoiceTotal      Float    @default(0)
+  sourceType        String   @default("csv")
+  externalInvoiceId String?
+  invoiceStatus     String   @default("imported")
+  importedByUserId  String?
+  importBatchId     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  importBatch ImportBatch?      @relation(fields: [importBatchId], references: [id])
+  lineItems   InvoiceLineItem[]
+  workLines   WorkLine[]
+}
+
+model InvoiceLineItem {
+  id            String   @id @default(cuid())
+  invoiceId     String
+  lineNumber    Int
+  description   String
+  quantity      Float?
+  unitPrice     Float?
+  lineTotal     Float
+  notes         String?
+  isWorkRelated Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  invoice   InvoiceRecord @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  workLines WorkLine[]
+}
+
+model WorkLine {
+  id                String    @id @default(cuid())
+  invoiceId         String
+  invoiceLineItemId String
+  title             String
+  description       String?
+  customerName      String
+  serviceAddress    String?
+  invoiceLineAmount Float
+  assignedSubId     String?
+  assignedAt        DateTime?
+  dueDate           DateTime?
+  workStatus        String    @default("unassigned")
+  approvalStatus    String    @default("not_submitted")
+  completionNotes   String?
+  adminNotes        String?
+  completedAt       DateTime?
+  approvedAt        DateTime?
+  approvedByUserId  String?
+  payEligible       Boolean   @default(false)
+  payAmount         Float?
+  paySummaryId      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  invoice      InvoiceRecord   @relation(fields: [invoiceId], references: [id])
+  lineItem     InvoiceLineItem @relation(fields: [invoiceLineItemId], references: [id])
+  assignedSub  Subcontractor?  @relation(fields: [assignedSubId], references: [id])
 }

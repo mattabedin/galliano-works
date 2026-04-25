@@ -3,15 +3,17 @@ export const dynamic = "force-dynamic";
 import { GallianoApp } from "@/components/GallianoApp";
 import { prisma } from "@/lib/db";
 import { Invoice, Sub, PayHistory, LineItem } from "@/lib/types";
+import { getInvoiceList } from "@/lib/invoice-actions";
 
 async function getData() {
-  const [dbSubs, dbInvoices, dbPayHistory] = await Promise.all([
+  const [dbSubs, dbInvoices, dbPayHistory, invoiceRecords] = await Promise.all([
     prisma.subcontractor.findMany({ orderBy: { name: "asc" } }),
     prisma.invoice.findMany({
       include: { lines: { include: { sub: true } } },
       orderBy: { number: "asc" },
     }),
     prisma.payHistory.findMany({ orderBy: { subId: "asc" } }),
+    getInvoiceList(),
   ]);
 
   const subs: Sub[] = dbSubs.map((s) => ({
@@ -39,11 +41,11 @@ async function getData() {
     id: p.id, week: p.week, amount: p.amount, items: p.items, subId: p.subId,
   }));
 
-  return { subs, invoices, payHistory };
+  return { subs, invoices, payHistory, invoiceRecords };
 }
 
 export default async function Home() {
-  const { subs, invoices, payHistory } = await getData();
+  const { subs, invoices, payHistory, invoiceRecords } = await getData();
 
   return (
     <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
@@ -51,6 +53,7 @@ export default async function Home() {
         initialInvoices={invoices}
         initialSubs={subs}
         initialPayHistory={payHistory}
+        initialInvoiceRecords={invoiceRecords}
       />
     </div>
   );
