@@ -336,3 +336,49 @@ export async function updateWorkLineStatus(workLineId: string, status: string): 
   await updateInvoiceStatus(wl.invoiceId);
   revalidatePath("/");
 }
+
+export async function updateInvoiceRecord(
+  id: string,
+  data: {
+    invoiceNumber?: string;
+    invoiceDate?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerPhone?: string;
+    customerAddress?: string;
+    serviceAddress?: string;
+    invoiceTotal?: number;
+  }
+): Promise<void> {
+  await prisma.invoiceRecord.update({ where: { id }, data });
+  revalidatePath("/");
+}
+
+export async function updateInvoiceLineItem(
+  id: string,
+  data: {
+    description?: string;
+    quantity?: number | null;
+    unitPrice?: number | null;
+    lineTotal?: number;
+    notes?: string | null;
+  }
+): Promise<void> {
+  await prisma.invoiceLineItem.update({ where: { id }, data });
+  revalidatePath("/");
+}
+
+export async function updateWorkLine(
+  id: string,
+  data: {
+    title?: string;
+    description?: string | null;
+    adminNotes?: string | null;
+    dueDate?: Date | null;
+    serviceAddress?: string | null;
+    payAmount?: number | null;
+  }
+): Promise<void> {
+  await prisma.workLine.update({ where: { id }, data });
+  revalidatePath("/");
+}
