@@ -368,6 +368,36 @@ export async function updateInvoiceLineItem(
   revalidatePath("/");
 }
 
+export async function createInvoiceLineItem(
+  invoiceId: string,
+  data: {
+    description: string;
+    quantity?: number | null;
+    unitPrice?: number | null;
+    lineTotal: number;
+    notes?: string | null;
+  }
+): Promise<void> {
+  const last = await prisma.invoiceLineItem.findFirst({
+    where: { invoiceId },
+    orderBy: { lineNumber: "desc" },
+    select: { lineNumber: true },
+  });
+  await prisma.invoiceLineItem.create({
+    data: {
+      invoiceId,
+      lineNumber: (last?.lineNumber ?? 0) + 1,
+      description: data.description,
+      quantity: data.quantity ?? null,
+      unitPrice: data.unitPrice ?? null,
+      lineTotal: data.lineTotal,
+      notes: data.notes ?? null,
+      isWorkRelated: true,
+    },
+  });
+  revalidatePath("/");
+}
+
 export async function updateWorkLine(
   id: string,
   data: {

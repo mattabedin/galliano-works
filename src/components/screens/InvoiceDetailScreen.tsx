@@ -12,7 +12,7 @@ import { Sub, fmt$ } from "@/lib/types";
 import { WorkLineModal } from "@/components/modals/WorkLineModal";
 import {
   markInvoiceReviewed, closeInvoice, updateLineItemWorkRelated,
-  updateInvoiceRecord, updateInvoiceLineItem, updateWorkLine,
+  updateInvoiceRecord, updateInvoiceLineItem, updateWorkLine, createInvoiceLineItem,
 } from "@/lib/invoice-actions";
 
 function formatDate(dateStr: string | Date) {
@@ -468,12 +468,21 @@ function WorkLineRow({ wl, onSaved }: { wl: WorkLineData; onSaved: () => void })
 /* ── Line items card (each row inline-editable) ─────────────── */
 
 function LineItemsCard({ invoice, onRefresh }: { invoice: InvoiceRecordData; onRefresh: () => void }) {
+  const [addingNew, setAddingNew] = useState(false);
+
   return (
     <Card pad={0}>
       <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <SectionLabel>Invoice Line Items</SectionLabel>
-        <div style={{ fontSize: 12, color: "#8a8780" }}>
-          {invoice.lineItems.length} item{invoice.lineItems.length !== 1 ? "s" : ""} · {fmt$(invoice.invoiceTotal)} total
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 12, color: "#8a8780" }}>
+            {invoice.lineItems.length} item{invoice.lineItems.length !== 1 ? "s" : ""} · {fmt$(invoice.invoiceTotal)} total
+          </div>
+          {!addingNew && (
+            <Btn variant="ghost" size="sm" icon={<Icon.plus />} onClick={() => setAddingNew(true)}>
+              Add line item
+            </Btn>
+          )}
         </div>
       </div>
       <Divider />
@@ -501,6 +510,14 @@ function LineItemsCard({ invoice, onRefresh }: { invoice: InvoiceRecordData; onR
               onRefresh={onRefresh}
             />
           ))}
+          {addingNew && (
+            <NewLineItemRow
+              invoiceId={invoice.id}
+              nextLineNumber={invoice.lineItems.length + 1}
+              onSaved={() => { setAddingNew(false); onRefresh(); }}
+              onCancel={() => setAddingNew(false)}
+            />
+          )}
         </tbody>
         <tfoot>
           <tr style={{ borderTop: "2px solid #ecebe6", background: "#faf8f4" }}>
@@ -513,6 +530,116 @@ function LineItemsCard({ invoice, onRefresh }: { invoice: InvoiceRecordData; onR
         </tfoot>
       </table>
     </Card>
+  );
+}
+
+function NewLineItemRow({
+  invoiceId, nextLineNumber, onSaved, onCancel,
+}: {
+  invoiceId: string;
+  nextLineNumber: number;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [fields, setFields] = useState({
+    description: "",
+    quantity: "",
+    unitPrice: "",
+    lineTotal: "",
+    notes: "",
+  });
+
+  function set(key: keyof typeof fields) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const next = { ...fields, [key]: e.target.value };
+      if ((key === "quantity" || key === "unitPrice") && next.quantity && next.unitPrice) {
+        next.lineTotal = String(
+          Math.round(parseFloat(next.quantity) * parseFloat(next.unitPrice) * 100) / 100
+        );
+      }
+      setFields(next);
+    };
+  }
+
+  async function handleSave() {
+    if (!fields.description.trim() || !fields.lineTotal) return;
+    setSaving(true);
+    try {
+      await createInvoiceLineItem(invoiceId, {
+        description: fields.description.trim(),
+        quantity: fields.quantity ? parseFloat(fields.quantity) : null,
+        unitPrice: fields.unitPrice ? parseFloat(fields.unitPrice) : null,
+        lineTotal: parseFloat(fields.lineTotal),
+        notes: fields.notes || null,
+      });
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <tr style={{ borderTop: "1px solid #f4f2ec", background: "#fffef8" }}>
+      <td style={{ padding: "10px 14px", color: "#8a8780", fontSize: 12 }}>{nextLineNumber}</td>
+      <td style={{ padding: "8px 8px" }}>
+        <input
+          autoFocus
+          value={fields.description}
+          onChange={set("description")}
+          placeholder="Line item description…"
+          style={inlineInputStyle({ flex: true })}
+        />
+      </td>
+      <td style={{ padding: "8px 6px" }}>
+        <input
+          type="number"
+          value={fields.quantity}
+          onChange={set("quantity")}
+          placeholder="Qty"
+          style={inlineInputStyle({ width: 60, textAlign: "right" })}
+        />
+      </td>
+      <td style={{ padding: "8px 6px" }}>
+        <input
+          type="number"
+          value={fields.unitPrice}
+          onChange={set("unitPrice")}
+          placeholder="0.00"
+          style={inlineInputStyle({ width: 80, textAlign: "right" })}
+        />
+      </td>
+      <td style={{ padding: "8px 6px" }}>
+        <input
+          type="number"
+          value={fields.lineTotal}
+          onChange={set("lineTotal")}
+          placeholder="0.00"
+          style={inlineInputStyle({ width: 80, textAlign: "right" })}
+        />
+      </td>
+      <td style={{ padding: "8px 6px" }}>
+        <input
+          value={fields.notes}
+          onChange={set("notes")}
+          placeholder="Notes…"
+          style={inlineInputStyle({ width: 140 })}
+        />
+      </td>
+      <td colSpan={2} />
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
+        <div style={{ display: "flex", gap: 4 }}>
+          <Btn variant="ghost" size="sm" onClick={onCancel} disabled={saving}>✕</Btn>
+          <Btn
+            variant="primary" size="sm"
+            onClick={handleSave}
+            disabled={saving || !fields.description.trim() || !fields.lineTotal}
+          >
+            {saving ? "…" : "✓"}
+          </Btn>
+        </div>
+      </td>
+    </tr>
   );
 }
 
