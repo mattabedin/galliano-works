@@ -368,6 +368,20 @@ export async function updateInvoiceLineItem(
   revalidatePath("/");
 }
 
+export async function deleteInvoiceLineItem(id: string): Promise<{ success: boolean; error?: string }> {
+  const li = await prisma.invoiceLineItem.findUnique({
+    where: { id },
+    include: { workLines: { select: { id: true } } },
+  });
+  if (!li) return { success: false, error: "Line item not found" };
+  if (li.workLines.length > 0) {
+    return { success: false, error: "Cannot delete a line item that has work lines. Remove the work lines first." };
+  }
+  await prisma.invoiceLineItem.delete({ where: { id } });
+  revalidatePath("/");
+  return { success: true };
+}
+
 export async function createInvoiceLineItem(
   invoiceId: string,
   data: {

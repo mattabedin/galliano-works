@@ -12,7 +12,8 @@ import { Sub, fmt$ } from "@/lib/types";
 import { WorkLineModal } from "@/components/modals/WorkLineModal";
 import {
   markInvoiceReviewed, closeInvoice, updateLineItemWorkRelated,
-  updateInvoiceRecord, updateInvoiceLineItem, updateWorkLine, createInvoiceLineItem,
+  updateInvoiceRecord, updateInvoiceLineItem, updateWorkLine,
+  createInvoiceLineItem, deleteInvoiceLineItem,
 } from "@/lib/invoice-actions";
 
 function formatDate(dateStr: string | Date) {
@@ -479,7 +480,7 @@ function LineItemsCard({ invoice, onRefresh }: { invoice: InvoiceRecordData; onR
             {invoice.lineItems.length} item{invoice.lineItems.length !== 1 ? "s" : ""} · {fmt$(invoice.invoiceTotal)} total
           </div>
           {!addingNew && (
-            <Btn variant="ghost" size="sm" icon={<Icon.plus />} onClick={() => setAddingNew(true)}>
+            <Btn variant="secondary" size="sm" icon={<Icon.plus />} onClick={() => setAddingNew(true)}>
               Add line item
             </Btn>
           )}
@@ -654,6 +655,9 @@ function LineItemRow({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [fields, setFields] = useState({
     description: li.description,
     quantity: li.quantity != null ? String(li.quantity) : "",
@@ -694,6 +698,22 @@ function LineItemRow({
       onRefresh();
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const result = await deleteInvoiceLineItem(li.id);
+      if (result.success) {
+        onRefresh();
+      } else {
+        setDeleteError(result.error || "Delete failed");
+        setConfirmDelete(false);
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -818,8 +838,31 @@ function LineItemRow({
           <span style={{ fontSize: 12, color: "#b8b5ae" }}>—</span>
         )}
       </td>
-      <td style={{ padding: "12px 10px" }}>
-        <Btn variant="ghost" size="sm" icon={<Icon.pencil />} onClick={() => setEditing(true)} />
+      <td style={{ padding: "12px 10px", whiteSpace: "nowrap" }}>
+        {deleteError && (
+          <div style={{ fontSize: 11, color: "#a8442f", marginBottom: 4, maxWidth: 160 }}>{deleteError}</div>
+        )}
+        {confirmDelete ? (
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <span style={{ fontSize: 11.5, color: "#a8442f", marginRight: 2 }}>Delete?</span>
+            <Btn variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "…" : "Yes"}
+            </Btn>
+            <Btn variant="ghost" size="sm" onClick={() => { setConfirmDelete(false); setDeleteError(""); }}>No</Btn>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 4 }}>
+            <Btn variant="ghost" size="sm" icon={<Icon.pencil />} onClick={() => setEditing(true)} />
+            <span title={hasWorkLine ? "Remove work lines first" : "Delete line item"}>
+              <Btn
+                variant="ghost" size="sm"
+                icon={<Icon.trash style={{ color: hasWorkLine ? "#b8b5ae" : "#a8442f" }} />}
+                onClick={() => setConfirmDelete(true)}
+                disabled={hasWorkLine}
+              />
+            </span>
+          </div>
+        )}
       </td>
     </tr>
   );
