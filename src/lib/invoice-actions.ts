@@ -173,13 +173,14 @@ export async function checkDuplicates(
 
 export async function saveImportedInvoices(
   invoices: ParsedInvoice[],
-  fileName: string
+  fileName: string,
+  sourceType: string = "csv"
 ): Promise<{ success: boolean; batchId: string; invoiceCount: number; lineItemCount: number }> {
   const totalLineItems = invoices.reduce((s, inv) => s + inv.lineItems.length, 0);
 
   const batch = await prisma.importBatch.create({
     data: {
-      sourceType: "csv",
+      sourceType,
       originalFileName: fileName,
       totalRows: totalLineItems,
       successfulRows: totalLineItems,
@@ -199,7 +200,7 @@ export async function saveImportedInvoices(
         customerAddress: inv.customerAddress || null,
         serviceAddress: inv.serviceAddress || null,
         invoiceTotal: inv.invoiceTotal || inv.lineItems.reduce((s, l) => s + l.lineTotal, 0),
-        sourceType: "csv",
+        sourceType,
         invoiceStatus: "imported",
         importBatchId: batch.id,
         lineItems: {

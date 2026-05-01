@@ -187,3 +187,18 @@ model WorkLine {
   lineItem     InvoiceLineItem @relation(fields: [invoiceLineItemId], references: [id])
   assignedSub  Subcontractor?  @relation(fields: [assignedSubId], references: [id])
 }
+
+model Integration {
+  id           String    @id @default(cuid())
+  provider     String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  accountId    String?
+  displayName  String?
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([provider])
+}

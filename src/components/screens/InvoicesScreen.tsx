@@ -136,7 +136,7 @@ export function InvoicesScreen({ invoices, onSelectInvoice, onRefresh }: Props) 
           )}
         </div>
         <Btn variant="primary" size="md" icon={<Icon.upload />} onClick={() => setShowImport(true)}>
-          Import CSV
+          Import Invoices
         </Btn>
       </div>
 
@@ -244,7 +244,7 @@ function EmptyState({ hasInvoices, onImport }: { hasInvoices: boolean; onImport:
         <div style={{ fontSize: 13.5, color: "#8a8780", maxWidth: 320 }}>
           {hasInvoices
             ? "Try adjusting your search or filter to find what you're looking for."
-            : "Import a CSV file to get started. Each row becomes an invoice line item ready for assignment."}
+            : "Import invoices via CSV or connect FreshBooks / QuickBooks to get started."}
         </div>
       </div>
       {!hasInvoices && (
