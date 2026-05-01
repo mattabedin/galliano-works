@@ -335,10 +335,13 @@ export async function deleteInvoiceLineItem(id: string): Promise<{ success: bool
     include: { workLines: { select: { id: true } } },
   });
   if (!li) return { success: false, error: "Line item not found" };
+
   if (li.workLines.length > 0) {
-    return { success: false, error: "Cannot delete a line item that has work lines. Remove the work lines first." };
+    await prisma.workLine.deleteMany({ where: { invoiceLineItemId: id } });
   }
+
   await prisma.invoiceLineItem.delete({ where: { id } });
+  await updateInvoiceStatus(li.invoiceId);
   revalidatePath("/");
   return { success: true };
 }

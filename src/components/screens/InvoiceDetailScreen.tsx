@@ -839,28 +839,32 @@ function LineItemRow({
         )}
       </td>
       <td style={{ padding: "12px 10px", whiteSpace: "nowrap" }}>
-        {deleteError && (
-          <div style={{ fontSize: 11, color: "#a8442f", marginBottom: 4, maxWidth: 160 }}>{deleteError}</div>
-        )}
         {confirmDelete ? (
-          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <span style={{ fontSize: 11.5, color: "#a8442f", marginRight: 2 }}>Delete?</span>
-            <Btn variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "…" : "Yes"}
-            </Btn>
-            <Btn variant="ghost" size="sm" onClick={() => { setConfirmDelete(false); setDeleteError(""); }}>No</Btn>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+            {hasWorkLine && (
+              <div style={{ fontSize: 11, color: "#a8442f", maxWidth: 180, lineHeight: 1.4 }}>
+                This will also delete {li.workLines.length} work line{li.workLines.length !== 1 ? "s" : ""}.
+              </div>
+            )}
+            {deleteError && (
+              <div style={{ fontSize: 11, color: "#a8442f" }}>{deleteError}</div>
+            )}
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <span style={{ fontSize: 11.5, color: "#a8442f", marginRight: 2 }}>Delete?</span>
+              <Btn variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "…" : "Yes, delete"}
+              </Btn>
+              <Btn variant="ghost" size="sm" onClick={() => { setConfirmDelete(false); setDeleteError(""); }}>Cancel</Btn>
+            </div>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 4 }}>
             <Btn variant="ghost" size="sm" icon={<Icon.pencil />} onClick={() => setEditing(true)} />
-            <span title={hasWorkLine ? "Remove work lines first" : "Delete line item"}>
-              <Btn
-                variant="ghost" size="sm"
-                icon={<Icon.trash style={{ color: hasWorkLine ? "#b8b5ae" : "#a8442f" }} />}
-                onClick={() => setConfirmDelete(true)}
-                disabled={hasWorkLine}
-              />
-            </span>
+            <Btn
+              variant="ghost" size="sm"
+              icon={<Icon.trash style={{ color: "#a8442f" }} />}
+              onClick={() => setConfirmDelete(true)}
+            />
           </div>
         )}
       </td>
