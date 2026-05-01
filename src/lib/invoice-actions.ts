@@ -290,6 +290,15 @@ export async function assignWorkLine(workLineId: string, subId: string): Promise
   revalidatePath("/");
 }
 
+export async function unassignWorkLine(workLineId: string): Promise<void> {
+  const wl = await prisma.workLine.update({
+    where: { id: workLineId },
+    data: { assignedSubId: null, workStatus: "unassigned", assignedAt: null },
+  });
+  await updateInvoiceStatus(wl.invoiceId);
+  revalidatePath("/");
+}
+
 export async function updateWorkLineStatus(workLineId: string, status: string): Promise<void> {
   UpdateWorkLineStatusSchema.parse({ workLineId, status });
   await transitionWorkLineStatus(workLineId, status);

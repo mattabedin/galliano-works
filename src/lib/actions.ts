@@ -92,6 +92,15 @@ export async function addExpense(lineId: string, amount: number) {
   revalidatePath("/");
 }
 
+export async function unassignLineItem(lineId: string) {
+  z.string().min(1).parse(lineId);
+  await prisma.lineItem.update({
+    where: { id: lineId },
+    data: { subId: null, status: "unassigned" },
+  });
+  revalidatePath("/");
+}
+
 export async function updateLineStatus(lineId: string, status: string) {
   UpdateLineStatusSchema.parse({ lineId, status });
   await prisma.lineItem.update({
