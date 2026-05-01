@@ -10,6 +10,18 @@ import {
   DuplicateWarning,
   InvoiceStatus,
 } from "@/lib/invoice-types";
+import {
+  AssignWorkLineSchema,
+  UpdateWorkLineStatusSchema,
+  UpdateWorkLineSchema,
+  CreateWorkLinesSchema,
+  MarkWorkLinesPaidSchema,
+  UpdateInvoiceRecordSchema,
+  CreateInvoiceLineItemSchema,
+  UpdateInvoiceLineItemSchema,
+} from "@/lib/schemas";
+import { assignWorkLineToSub, transitionWorkLineStatus, bulkMarkPaid } from "@/lib/services/worklines";
+import { persistImportedInvoices } from "@/lib/services/import";
 
 export async function getInvoiceList(): Promise<InvoiceRecordData[]> {
   const records = await prisma.invoiceRecord.findMany({
@@ -176,56 +188,16 @@ export async function saveImportedInvoices(
   fileName: string,
   sourceType: string = "csv"
 ): Promise<{ success: boolean; batchId: string; invoiceCount: number; lineItemCount: number }> {
-  const totalLineItems = invoices.reduce((s, inv) => s + inv.lineItems.length, 0);
-
-  const batch = await prisma.importBatch.create({
-    data: {
-      sourceType,
-      originalFileName: fileName,
-      totalRows: totalLineItems,
-      successfulRows: totalLineItems,
-      failedRows: 0,
-      status: "completed",
-    },
-  });
-
-  for (const inv of invoices) {
-    await prisma.invoiceRecord.create({
-      data: {
-        invoiceNumber: inv.invoiceNumber,
-        invoiceDate: inv.invoiceDate,
-        customerName: inv.customerName,
-        customerEmail: inv.customerEmail || null,
-        customerPhone: inv.customerPhone || null,
-        customerAddress: inv.customerAddress || null,
-        serviceAddress: inv.serviceAddress || null,
-        invoiceTotal: inv.invoiceTotal || inv.lineItems.reduce((s, l) => s + l.lineTotal, 0),
-        sourceType,
-        invoiceStatus: "imported",
-        importBatchId: batch.id,
-        lineItems: {
-          create: inv.lineItems.map((li, idx) => ({
-            lineNumber: idx + 1,
-            description: li.description,
-            quantity: li.quantity,
-            unitPrice: li.unitPrice,
-            lineTotal: li.lineTotal,
-            notes: li.notes,
-            isWorkRelated: true,
-          })),
-        },
-      },
-    });
-  }
-
+  const result = await persistImportedInvoices(invoices, fileName, sourceType);
   revalidatePath("/");
-  return { success: true, batchId: batch.id, invoiceCount: invoices.length, lineItemCount: totalLineItems };
+  return { success: true, ...result };
 }
 
 export async function createWorkLines(
   items: { lineItemId: string; title: string; description?: string }[]
 ): Promise<{ success: boolean; count: number }> {
   if (items.length === 0) return { success: true, count: 0 };
+  CreateWorkLinesSchema.parse(items);
 
   const lineItems = await prisma.invoiceLineItem.findMany({
     where: { id: { in: items.map((i) => i.lineItemId) } },
@@ -313,28 +285,14 @@ export async function closeInvoice(invoiceId: string): Promise<void> {
 }
 
 export async function assignWorkLine(workLineId: string, subId: string): Promise<void> {
-  await prisma.workLine.update({
-    where: { id: workLineId },
-    data: {
-      assignedSubId: subId,
-      workStatus: "assigned",
-      assignedAt: new Date(),
-    },
-  });
+  AssignWorkLineSchema.parse({ workLineId, subId });
+  await assignWorkLineToSub(workLineId, subId);
   revalidatePath("/");
 }
 
 export async function updateWorkLineStatus(workLineId: string, status: string): Promise<void> {
-  const data: Record<string, unknown> = { workStatus: status };
-  if (status === "completed") data.completedAt = new Date();
-  if (status === "approved") {
-    data.approvalStatus = "approved";
-    data.approvedAt = new Date();
-    data.payEligible = true;
-  }
-
-  const wl = await prisma.workLine.update({ where: { id: workLineId }, data });
-  await updateInvoiceStatus(wl.invoiceId);
+  UpdateWorkLineStatusSchema.parse({ workLineId, status });
+  await transitionWorkLineStatus(workLineId, status);
   revalidatePath("/");
 }
 
@@ -351,6 +309,7 @@ export async function updateInvoiceRecord(
     invoiceTotal?: number;
   }
 ): Promise<void> {
+  UpdateInvoiceRecordSchema.parse({ id, data });
   await prisma.invoiceRecord.update({ where: { id }, data });
   revalidatePath("/");
 }
@@ -365,6 +324,7 @@ export async function updateInvoiceLineItem(
     notes?: string | null;
   }
 ): Promise<void> {
+  UpdateInvoiceLineItemSchema.parse({ id, data });
   await prisma.invoiceLineItem.update({ where: { id }, data });
   revalidatePath("/");
 }
@@ -393,6 +353,7 @@ export async function createInvoiceLineItem(
     notes?: string | null;
   }
 ): Promise<void> {
+  CreateInvoiceLineItemSchema.parse({ invoiceId, data });
   const last = await prisma.invoiceLineItem.findFirst({
     where: { invoiceId },
     orderBy: { lineNumber: "desc" },
@@ -415,13 +376,8 @@ export async function createInvoiceLineItem(
 
 export async function markWorkLinesPaid(workLineIds: string[]): Promise<void> {
   if (workLineIds.length === 0) return;
-  await prisma.workLine.updateMany({
-    where: { id: { in: workLineIds } },
-    data: { workStatus: "paid" },
-  });
-  const wls = await prisma.workLine.findMany({ where: { id: { in: workLineIds } }, select: { invoiceId: true } });
-  const invoiceIds = [...new Set(wls.map((w) => w.invoiceId))];
-  for (const invoiceId of invoiceIds) await updateInvoiceStatus(invoiceId);
+  MarkWorkLinesPaidSchema.parse(workLineIds);
+  await bulkMarkPaid(workLineIds);
   revalidatePath("/");
 }
 
@@ -444,6 +400,7 @@ export async function updateWorkLine(
     payAmount?: number | null;
   }
 ): Promise<void> {
+  UpdateWorkLineSchema.parse({ id, data });
   await prisma.workLine.update({ where: { id }, data });
   revalidatePath("/");
 }

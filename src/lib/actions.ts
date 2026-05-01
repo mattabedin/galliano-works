@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { AssignLineItemSchema, UpdateLineStatusSchema } from "@/lib/schemas";
 
 export async function getAppData() {
   const [subs, invoices, payHistory] = await Promise.all([
@@ -16,6 +18,7 @@ export async function getAppData() {
 }
 
 export async function assignLineItem(lineId: string, subId: string) {
+  AssignLineItemSchema.parse({ lineId, subId });
   await prisma.lineItem.update({
     where: { id: lineId },
     data: { subId, status: "assigned" },
@@ -24,6 +27,7 @@ export async function assignLineItem(lineId: string, subId: string) {
 }
 
 export async function approveLineItem(lineId: string) {
+  z.string().min(1).parse(lineId);
   await prisma.lineItem.update({
     where: { id: lineId },
     data: { status: "approved" },
@@ -32,6 +36,7 @@ export async function approveLineItem(lineId: string) {
 }
 
 export async function rejectLineItem(lineId: string) {
+  z.string().min(1).parse(lineId);
   await prisma.lineItem.update({
     where: { id: lineId },
     data: { status: "in_progress" },
@@ -78,6 +83,7 @@ export async function runPayroll() {
 }
 
 export async function addExpense(lineId: string, amount: number) {
+  z.object({ lineId: z.string().min(1), amount: z.number().finite().nonnegative() }).parse({ lineId, amount });
   const line = await prisma.lineItem.findUniqueOrThrow({ where: { id: lineId } });
   await prisma.lineItem.update({
     where: { id: lineId },
@@ -87,6 +93,7 @@ export async function addExpense(lineId: string, amount: number) {
 }
 
 export async function updateLineStatus(lineId: string, status: string) {
+  UpdateLineStatusSchema.parse({ lineId, status });
   await prisma.lineItem.update({
     where: { id: lineId },
     data: { status },
