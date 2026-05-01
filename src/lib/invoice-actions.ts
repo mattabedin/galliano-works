@@ -366,12 +366,20 @@ export async function createInvoiceLineItem(
   }
 ): Promise<void> {
   CreateInvoiceLineItemSchema.parse({ invoiceId, data });
-  const last = await prisma.invoiceLineItem.findFirst({
-    where: { invoiceId },
-    orderBy: { lineNumber: "desc" },
-    select: { lineNumber: true },
-  });
-  await prisma.invoiceLineItem.create({
+
+  const [last, invoice] = await Promise.all([
+    prisma.invoiceLineItem.findFirst({
+      where: { invoiceId },
+      orderBy: { lineNumber: "desc" },
+      select: { lineNumber: true },
+    }),
+    prisma.invoiceRecord.findUniqueOrThrow({
+      where: { id: invoiceId },
+      select: { customerName: true, serviceAddress: true },
+    }),
+  ]);
+
+  const lineItem = await prisma.invoiceLineItem.create({
     data: {
       invoiceId,
       lineNumber: (last?.lineNumber ?? 0) + 1,
@@ -383,6 +391,23 @@ export async function createInvoiceLineItem(
       isWorkRelated: true,
     },
   });
+
+  // Auto-create a work line so it appears on the Assignments board immediately
+  await prisma.workLine.create({
+    data: {
+      invoiceId,
+      invoiceLineItemId: lineItem.id,
+      title: data.description,
+      customerName: invoice.customerName,
+      serviceAddress: invoice.serviceAddress,
+      invoiceLineAmount: data.lineTotal,
+      workStatus: "unassigned",
+      approvalStatus: "not_submitted",
+      payEligible: false,
+    },
+  });
+
+  await updateInvoiceStatus(invoiceId);
   revalidatePath("/");
 }
 
