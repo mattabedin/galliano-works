@@ -2,40 +2,72 @@
 
 import { useState, useTransition } from "react";
 import { Invoice, Sub, LineItem, lineLabor, fmt$ } from "@/lib/types";
+import { InvoiceRecordData, WorkLineData } from "@/lib/invoice-types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Btn } from "@/components/ui/Btn";
 import { Card, Divider } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 import { runPayroll } from "@/lib/actions";
+import { markWorkLinesPaid } from "@/lib/invoice-actions";
 
 interface Props {
   invoices: Invoice[];
   subs: Sub[];
   onUpdate: (invoices: Invoice[]) => void;
+  invoiceRecords?: InvoiceRecordData[];
+  onRefresh?: () => void;
 }
 
-interface PayEntry {
+interface LegacyPayEntry {
+  kind: "legacy";
   sub: Sub;
   lines: (LineItem & { invNum?: string; client?: string })[];
   total: number;
 }
 
-export function PayrollScreen({ invoices, subs, onUpdate }: Props) {
+interface WorkLinePayEntry {
+  kind: "workline";
+  sub: Sub;
+  workLines: (WorkLineData & { invoiceNumber: string })[];
+  total: number;
+}
+
+interface PayEntry {
+  sub: Sub;
+  legacyLines: (LineItem & { invNum?: string; client?: string })[];
+  workLines: (WorkLineData & { invoiceNumber: string })[];
+  total: number;
+}
+
+export function PayrollScreen({ invoices, subs, onUpdate, invoiceRecords = [], onRefresh }: Props) {
   const [toast, showToast] = useToast();
   const [selected, setSelected] = useState<PayEntry | null>(null);
   const [, startTransition] = useTransition();
 
+  // Legacy approved lines
   const allLines = invoices.flatMap((inv) =>
     inv.lines.map((l) => ({ ...l, invNum: inv.number, client: inv.client }))
   );
-  const approved = allLines.filter((l) => l.status === "approved");
+  const approvedLegacy = allLines.filter((l) => l.status === "approved");
 
+  // Approved WorkLines
+  const allWorkLines: (WorkLineData & { invoiceNumber: string })[] = invoiceRecords.flatMap((rec) =>
+    rec.lineItems.flatMap((li) =>
+      li.workLines.map((wl) => ({ ...wl, invoiceNumber: rec.invoiceNumber }))
+    )
+  );
+  const approvedWorkLines = allWorkLines.filter((wl) => wl.workStatus === "approved" || wl.payEligible);
+
+  // Merge by sub
   const bySub: PayEntry[] = subs.map((sub) => {
-    const lines = approved.filter((l) => l.sub?.id === sub.id || l.subId === sub.id);
-    const total = lines.reduce((s, l) => s + lineLabor(l), 0);
-    return { sub, lines, total };
-  }).filter((x) => x.lines.length > 0);
+    const legacyLines = approvedLegacy.filter((l) => l.sub?.id === sub.id || l.subId === sub.id);
+    const workLines = approvedWorkLines.filter((wl) => wl.assignedSubId === sub.id);
+    const total =
+      legacyLines.reduce((s, l) => s + lineLabor(l), 0) +
+      workLines.reduce((s, wl) => s + (wl.payAmount ?? wl.invoiceLineAmount), 0);
+    return { sub, legacyLines, workLines, total };
+  }).filter((x) => x.legacyLines.length > 0 || x.workLines.length > 0);
 
   const grandTotal = bySub.reduce((s, x) => s + x.total, 0);
 
@@ -47,7 +79,15 @@ export function PayrollScreen({ invoices, subs, onUpdate }: Props) {
     onUpdate(updated);
     setSelected(null);
     showToast(`Payroll generated · ${fmt$(grandTotal)} across ${bySub.length} subcontractors`, "success");
-    startTransition(async () => { await runPayroll(); });
+
+    const approvedWorkLineIds = approvedWorkLines.map((wl) => wl.id);
+    startTransition(async () => {
+      await runPayroll();
+      if (approvedWorkLineIds.length > 0) {
+        await markWorkLinesPaid(approvedWorkLineIds);
+        onRefresh?.();
+      }
+    });
   };
 
   return (
@@ -74,10 +114,11 @@ export function PayrollScreen({ invoices, subs, onUpdate }: Props) {
               No approved items for this week
             </div>
           )}
-          {bySub.map(({ sub, lines, total }, i) => {
-            const exp = lines.reduce((s, l) => s + (l.expenses || 0), 0);
+          {bySub.map(({ sub, legacyLines, workLines, total }, i) => {
+            const exp = legacyLines.reduce((s, l) => s + (l.expenses || 0), 0);
+            const itemCount = legacyLines.length + workLines.length;
             return (
-              <div key={sub.id} onClick={() => setSelected({ sub, lines, total })} style={{
+              <div key={sub.id} onClick={() => setSelected({ sub, legacyLines, workLines, total })} style={{
                 padding: "14px 20px",
                 display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 20px", gap: 12,
                 alignItems: "center",
@@ -93,7 +134,7 @@ export function PayrollScreen({ invoices, subs, onUpdate }: Props) {
                     <div style={{ fontSize: 11, color: "#8a8780" }}>{sub.trade}</div>
                   </div>
                 </div>
-                <div style={{ textAlign: "right", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{lines.length}</div>
+                <div style={{ textAlign: "right", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{itemCount}</div>
                 <div style={{ textAlign: "right", fontSize: 13, fontVariantNumeric: "tabular-nums", color: "#6b6860" }}>{fmt$(exp)}</div>
                 <div style={{ textAlign: "right", fontSize: 14, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmt$(total)}</div>
                 <Icon.chevronR style={{ color: "#b8b5ae" }} />
@@ -120,9 +161,18 @@ export function PayrollScreen({ invoices, subs, onUpdate }: Props) {
   );
 }
 
-function PayStubPreview({ entry, onClose, showToast }: { entry: PayEntry; onClose: () => void; showToast: (msg: string, kind?: "success" | "info") => void }) {
-  const { sub, lines, total } = entry;
-  const exp = lines.reduce((s, l) => s + (l.expenses || 0), 0);
+function PayStubPreview({
+  entry,
+  onClose,
+  showToast,
+}: {
+  entry: PayEntry;
+  onClose: () => void;
+  showToast: (msg: string, kind?: "success" | "info") => void;
+}) {
+  const { sub, legacyLines, workLines, total } = entry;
+  const exp = legacyLines.reduce((s, l) => s + (l.expenses || 0), 0);
+  const allItems = legacyLines.length + workLines.length;
 
   return (
     <Card pad={0} style={{ position: "sticky", top: 0 }}>
@@ -165,7 +215,7 @@ function PayStubPreview({ entry, onClose, showToast }: { entry: PayEntry; onClos
             <div>
               <div style={{ fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#8a8780", fontFamily: "ui-monospace, monospace" }}>Summary</div>
               <div style={{ fontSize: 11, color: "#1a1814", marginTop: 4, fontFamily: "ui-monospace, monospace" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span>Completed items</span><span>{lines.length}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>Completed items</span><span>{allItems}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}><span>Labor total</span><span>{fmt$(total)}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}><span>Pass-through expenses</span><span>{fmt$(exp)}</span></div>
               </div>
@@ -182,7 +232,7 @@ function PayStubPreview({ entry, onClose, showToast }: { entry: PayEntry; onClos
                 </tr>
               </thead>
               <tbody>
-                {lines.map((l) => (
+                {legacyLines.map((l) => (
                   <tr key={l.id} style={{ borderBottom: "1px solid #ecebe6" }}>
                     <td style={{ padding: "8px 0", verticalAlign: "top" }}>{l.invNum}</td>
                     <td style={{ padding: "8px 12px 8px 0", fontFamily: "Georgia, serif", fontSize: 12 }}>
@@ -190,6 +240,16 @@ function PayStubPreview({ entry, onClose, showToast }: { entry: PayEntry; onClos
                       <div style={{ fontSize: 10, color: "#8a8780", fontFamily: "ui-monospace, monospace", marginTop: 2 }}>{l.client}</div>
                     </td>
                     <td style={{ padding: "8px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmt$(lineLabor(l))}</td>
+                  </tr>
+                ))}
+                {workLines.map((wl) => (
+                  <tr key={wl.id} style={{ borderBottom: "1px solid #ecebe6" }}>
+                    <td style={{ padding: "8px 0", verticalAlign: "top" }}>{wl.invoiceNumber}</td>
+                    <td style={{ padding: "8px 12px 8px 0", fontFamily: "Georgia, serif", fontSize: 12 }}>
+                      {wl.title}
+                      <div style={{ fontSize: 10, color: "#8a8780", fontFamily: "ui-monospace, monospace", marginTop: 2 }}>{wl.customerName}</div>
+                    </td>
+                    <td style={{ padding: "8px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmt$(wl.payAmount ?? wl.invoiceLineAmount)}</td>
                   </tr>
                 ))}
               </tbody>

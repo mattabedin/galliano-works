@@ -11,6 +11,7 @@ export type WorkStatus =
   | "assigned"
   | "in_progress"
   | "completed"
+  | "submitted"
   | "approved"
   | "rejected"
   | "paid";
@@ -95,6 +96,7 @@ export const WORK_STATUS_META: Record<WorkStatus, { label: string; bg: string; f
   assigned:    { label: "Assigned",    bg: "#eef2f7", fg: "#3b5378", dot: "#6b8cbf" },
   in_progress: { label: "In Progress", bg: "#fef4e6", fg: "#8a5a1a", dot: "#d89538" },
   completed:   { label: "Completed",   bg: "#e8f1ec", fg: "#2f6848", dot: "#4a8a6e" },
+  submitted:   { label: "Submitted",   bg: "#f0ebf7", fg: "#5c3d8a", dot: "#7b5ea7" },
   approved:    { label: "Approved",    bg: "#e8f1ec", fg: "#2f6848", dot: "#4a8a6e" },
   rejected:    { label: "Rejected",    bg: "#fbeee9", fg: "#a8442f", dot: "#d07060" },
   paid:        { label: "Paid",        bg: "#e6f0f2", fg: "#1f5a66", dot: "#3d7a8a" },

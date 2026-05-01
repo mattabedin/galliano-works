@@ -412,6 +412,18 @@ export async function createInvoiceLineItem(
   revalidatePath("/");
 }
 
+export async function markWorkLinesPaid(workLineIds: string[]): Promise<void> {
+  if (workLineIds.length === 0) return;
+  await prisma.workLine.updateMany({
+    where: { id: { in: workLineIds } },
+    data: { workStatus: "paid" },
+  });
+  const wls = await prisma.workLine.findMany({ where: { id: { in: workLineIds } }, select: { invoiceId: true } });
+  const invoiceIds = [...new Set(wls.map((w) => w.invoiceId))];
+  for (const invoiceId of invoiceIds) await updateInvoiceStatus(invoiceId);
+  revalidatePath("/");
+}
+
 export async function updateWorkLine(
   id: string,
   data: {

@@ -112,6 +112,8 @@ export function GallianoApp({ initialInvoices, initialSubs, initialPayHistory, i
             payHistory={payHistory}
             currentSubId={currentSubId}
             onUpdate={setInvoices}
+            invoiceRecords={invoiceRecords}
+            onRefresh={refreshInvoiceRecords}
           />
         </PhoneFrame>
       </div>
@@ -151,9 +153,9 @@ export function GallianoApp({ initialInvoices, initialSubs, initialPayHistory, i
         onRefresh={refreshInvoiceRecords}
       />
     ),
-    board:     <BoardScreen invoices={invoices} subs={subs} onUpdate={setInvoices} />,
-    approvals: <ApprovalsScreen invoices={invoices} subs={subs} onUpdate={setInvoices} />,
-    payroll:   <PayrollScreen invoices={invoices} subs={subs} onUpdate={setInvoices} />,
+    board:     <BoardScreen invoices={invoices} subs={subs} onUpdate={setInvoices} invoiceRecords={invoiceRecords} onRefresh={refreshInvoiceRecords} />,
+    approvals: <ApprovalsScreen invoices={invoices} subs={subs} onUpdate={setInvoices} invoiceRecords={invoiceRecords} onRefresh={refreshInvoiceRecords} />,
+    payroll:   <PayrollScreen invoices={invoices} subs={subs} onUpdate={setInvoices} invoiceRecords={invoiceRecords} onRefresh={refreshInvoiceRecords} />,
     earnings:  <SubEarningsScreen invoices={invoices} subs={subs} payHistory={payHistory} />,
     expenses:  <ExpensesScreen invoices={invoices} subs={subs} onUpdate={setInvoices} />,
     profit:    <ProfitabilityScreen invoices={invoices} />,

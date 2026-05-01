@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Invoice, Sub, PayHistory, LineItem, lineLabor, fmt$ } from "@/lib/types";
+import { InvoiceRecordData, WorkLineData } from "@/lib/invoice-types";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Btn } from "@/components/ui/Btn";
@@ -9,6 +10,7 @@ import { Divider } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 import { updateLineStatus } from "@/lib/actions";
+import { updateWorkLineStatus } from "@/lib/invoice-actions";
 
 interface Props {
   invoices: Invoice[];
@@ -16,26 +18,45 @@ interface Props {
   payHistory: PayHistory[];
   currentSubId: string;
   onUpdate: (invoices: Invoice[]) => void;
+  invoiceRecords?: InvoiceRecordData[];
+  onRefresh?: () => void;
 }
 
-export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUpdate }: Props) {
+export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUpdate, invoiceRecords = [], onRefresh }: Props) {
   const [toast, showToast] = useToast();
   const [tab, setTab] = useState<"jobs" | "earnings">("jobs");
   const [, startTransition] = useTransition();
 
   const sub = subs.find((s) => s.id === currentSubId) || subs[0];
 
+  // Legacy LineItems for this sub
   const allLines = invoices.flatMap((inv) =>
     inv.lines.map((l) => ({ ...l, invNum: inv.number, client: inv.client, address: inv.address }))
   );
   const myLines = allLines.filter((l) => l.sub?.id === currentSubId || l.subId === currentSubId);
-  const active = myLines.filter((l) => ["assigned", "in_progress", "submitted"].includes(l.status));
-  const paid = myLines.filter((l) => l.status === "approved" || l.status === "paid");
+  const activeLegacy = myLines.filter((l) => ["assigned", "in_progress", "submitted"].includes(l.status));
+  const paidLegacy = myLines.filter((l) => l.status === "approved" || l.status === "paid");
 
-  const toBePaid = myLines.filter((l) => l.status === "approved").reduce((s, l) => s + lineLabor(l), 0);
+  // WorkLines for this sub
+  const allWorkLines: (WorkLineData & { invoiceNumber: string })[] = invoiceRecords.flatMap((rec) =>
+    rec.lineItems.flatMap((li) =>
+      li.workLines.map((wl) => ({ ...wl, invoiceNumber: rec.invoiceNumber }))
+    )
+  );
+  const myWorkLines = allWorkLines.filter((wl) => wl.assignedSubId === currentSubId);
+  const activeWorkLines = myWorkLines.filter((wl) =>
+    ["assigned", "in_progress", "submitted", "completed"].includes(wl.workStatus)
+  );
+  const approvedWorkLines = myWorkLines.filter((wl) => wl.workStatus === "approved" || wl.workStatus === "paid");
+
+  const toBePaidLegacy = paidLegacy.filter((l) => l.status === "approved").reduce((s, l) => s + lineLabor(l), 0);
+  const toBePaidWorkLines = approvedWorkLines.filter((wl) => wl.workStatus === "approved").reduce((s, wl) => s + (wl.payAmount ?? wl.invoiceLineAmount), 0);
+  const toBePaid = toBePaidLegacy + toBePaidWorkLines;
+  const approvedCount = paidLegacy.filter((l) => l.status === "approved").length + approvedWorkLines.filter((wl) => wl.workStatus === "approved").length;
+
   const paidYTD = payHistory.filter((p) => p.subId === currentSubId).reduce((s, p) => s + p.amount, 0);
 
-  const setStatus = (lineId: string, status: string) => {
+  const setLegacyStatus = (lineId: string, status: string) => {
     const updated = invoices.map((inv) => ({
       ...inv,
       lines: inv.lines.map((l) => l.id === lineId ? { ...l, status: status as LineItem["status"] } : l),
@@ -43,6 +64,15 @@ export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUp
     onUpdate(updated);
     startTransition(async () => { await updateLineStatus(lineId, status); });
   };
+
+  const setWorkLineStatus = (workLineId: string, status: string, notes?: string) => {
+    startTransition(async () => {
+      await updateWorkLineStatus(workLineId, status);
+      onRefresh?.();
+    });
+  };
+
+  const activeTotal = activeLegacy.length + activeWorkLines.length;
 
   return (
     <div style={{ width: "100%", height: "100%", background: "#fafaf8", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
@@ -65,7 +95,7 @@ export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUp
       {/* Tabs */}
       <div style={{ padding: "14px 20px 0", background: "#1a1814", display: "flex", gap: 4 }}>
         {[
-          { id: "jobs" as const, label: `Jobs · ${active.length}` },
+          { id: "jobs" as const, label: `Jobs · ${activeTotal}` },
           { id: "earnings" as const, label: "Earnings" },
         ].map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -87,7 +117,7 @@ export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUp
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{fmt$(toBePaid)} coming Friday</div>
-                  <div style={{ fontSize: 11.5, color: "#4a4740" }}>Direct deposit · {paid.filter((l) => l.status === "approved").length} items approved</div>
+                  <div style={{ fontSize: 11.5, color: "#4a4740" }}>Direct deposit · {approvedCount} items approved</div>
                 </div>
               </div>
             )}
@@ -96,19 +126,39 @@ export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUp
               My jobs · This week
             </div>
 
-            {active.length === 0 && (
+            {activeTotal === 0 && (
               <div style={{ padding: 40, textAlign: "center", color: "#a8a49c", fontSize: 13, background: "#fff", borderRadius: 12, border: "1px solid #ecebe6" }}>
                 No active jobs — nice work 🎉
               </div>
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {active.map((l) => (
+              {activeLegacy.map((l) => (
                 <MobileJobCard
                   key={l.id}
-                  line={l}
-                  onStart={() => { setStatus(l.id, "in_progress"); showToast("Marked as in progress"); }}
-                  onComplete={() => { setStatus(l.id, "submitted"); showToast("Sent for approval", "success"); }}
+                  kind="legacy"
+                  title={l.desc}
+                  invNum={l.invNum}
+                  client={l.client}
+                  address={l.address}
+                  pay={fmt$(lineLabor(l))}
+                  status={l.status as "assigned" | "in_progress" | "submitted"}
+                  onStart={() => { setLegacyStatus(l.id, "in_progress"); showToast("Marked as in progress"); }}
+                  onComplete={(notes) => { setLegacyStatus(l.id, "submitted"); showToast("Sent for approval", "success"); }}
+                />
+              ))}
+              {activeWorkLines.map((wl) => (
+                <MobileJobCard
+                  key={wl.id}
+                  kind="workline"
+                  title={wl.title}
+                  invNum={wl.invoiceNumber}
+                  client={wl.customerName}
+                  address={wl.serviceAddress || undefined}
+                  pay={fmt$(wl.payAmount ?? wl.invoiceLineAmount)}
+                  status={wl.workStatus as "assigned" | "in_progress" | "submitted"}
+                  onStart={() => { setWorkLineStatus(wl.id, "in_progress"); showToast("Marked as in progress"); }}
+                  onComplete={(notes) => { setWorkLineStatus(wl.id, "submitted", notes); showToast("Sent for approval", "success"); }}
                 />
               ))}
             </div>
@@ -157,27 +207,45 @@ export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUp
   );
 }
 
-function MobileJobCard({ line, onStart, onComplete }: {
-  line: LineItem & { invNum?: string; client?: string; address?: string };
+function MobileJobCard({
+  kind,
+  title,
+  invNum,
+  client,
+  address,
+  pay,
+  status,
+  onStart,
+  onComplete,
+}: {
+  kind: "legacy" | "workline";
+  title: string;
+  invNum?: string;
+  client?: string;
+  address?: string;
+  pay: string;
+  status: "assigned" | "in_progress" | "submitted" | "completed";
   onStart: () => void;
-  onComplete: () => void;
+  onComplete: (notes: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(line.status === "in_progress");
+  const [expanded, setExpanded] = useState(status === "in_progress");
   const [notes, setNotes] = useState("");
 
+  const pillStatus = status === "completed" ? "submitted" : status;
+
   return (
-    <div style={{ background: "#fff", border: "1px solid #ecebe6", borderRadius: 12, overflow: "hidden" }}>
+    <div style={{ background: "#fff", border: kind === "workline" ? "1px solid #e0eef0" : "1px solid #ecebe6", borderRadius: 12, overflow: "hidden" }}>
       <div onClick={() => setExpanded(!expanded)} style={{ padding: 14, cursor: "pointer" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10.5, color: "#8a8780", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>{line.invNum}</div>
-            <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.35, marginTop: 3 }}>{line.desc}</div>
-            <div style={{ fontSize: 11.5, color: "#8a8780", marginTop: 4 }}>{line.client}</div>
-            <div style={{ fontSize: 11, color: "#8a8780", marginTop: 2 }}>📍 {line.address}</div>
+            <div style={{ fontSize: 10.5, color: kind === "workline" ? "#5a7a80" : "#8a8780", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>{invNum}</div>
+            <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.35, marginTop: 3 }}>{title}</div>
+            <div style={{ fontSize: 11.5, color: "#8a8780", marginTop: 4 }}>{client}</div>
+            {address && <div style={{ fontSize: 11, color: "#8a8780", marginTop: 2 }}>📍 {address}</div>}
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmt$(lineLabor(line))}</div>
-            <div style={{ marginTop: 6 }}><StatusPill status={line.status} size="sm" /></div>
+            <div style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{pay}</div>
+            <div style={{ marginTop: 6 }}><StatusPill status={pillStatus} size="sm" /></div>
           </div>
         </div>
       </div>
@@ -186,12 +254,12 @@ function MobileJobCard({ line, onStart, onComplete }: {
         <>
           <Divider />
           <div style={{ padding: 14 }}>
-            {line.status === "assigned" && (
+            {status === "assigned" && (
               <Btn variant="primary" size="md" style={{ width: "100%", justifyContent: "center" }} onClick={onStart}>
                 Start job
               </Btn>
             )}
-            {line.status === "in_progress" && (
+            {status === "in_progress" && (
               <>
                 <label style={{ fontSize: 11.5, fontWeight: 500, color: "#4a4740", display: "block", marginBottom: 6 }}>
                   Completion notes (optional)
@@ -199,12 +267,12 @@ function MobileJobCard({ line, onStart, onComplete }: {
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What did you complete? Any issues?"
                   style={{ width: "100%", minHeight: 60, padding: 10, border: "1px solid #dcd9d2", borderRadius: 8, fontSize: 13, fontFamily: "inherit", resize: "vertical" }} />
                 <Btn variant="success" size="md" icon={<Icon.check />} style={{ width: "100%", justifyContent: "center", marginTop: 10 }}
-                  onClick={onComplete}>
+                  onClick={() => onComplete(notes)}>
                   Mark complete & submit
                 </Btn>
               </>
             )}
-            {line.status === "submitted" && (
+            {(status === "submitted" || status === "completed") && (
               <div style={{ padding: 12, background: "#f0ebf7", borderRadius: 8, fontSize: 12.5, color: "#5c3d8a", display: "flex", alignItems: "center", gap: 8 }}>
                 <Icon.clock />
                 Waiting for admin approval
