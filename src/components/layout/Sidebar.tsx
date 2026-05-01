@@ -40,7 +40,7 @@ export function Sidebar({ badges, accent, onPreviewMobile, onLogout }: SidebarPr
         <LogoMark accent={accent} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em" }}>Galliano Works</div>
-          <div style={{ fontSize: 10.5, color: "#8a8780", marginTop: 1 }}>Admin · Austin, TX</div>
+          <div style={{ fontSize: 10.5, color: "#8a8780", marginTop: 1 }}>Admin · Snellville, GA</div>
         </div>
       </div>
 
