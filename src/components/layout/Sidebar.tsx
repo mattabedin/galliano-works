@@ -1,40 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Icon, LogoMark } from "@/components/ui/Icons";
-import { Avatar } from "@/components/ui/Avatar";
-import { Sub, Invoice } from "@/lib/types";
-
-type Page = string;
 
 const items = [
-  { id: "dashboard", label: "Overview",       icon: Icon.dashboard },
-  { id: "invoices",  label: "Invoices",       icon: Icon.invoice },
-  { id: "board",     label: "Assignments",    icon: Icon.board },
-  { id: "approvals", label: "Approvals",      icon: Icon.checkCircle },
-  { id: "payroll",   label: "Payroll",        icon: Icon.payroll },
-  { id: "earnings",  label: "Subcontractors", icon: Icon.user },
-  { id: "expenses",  label: "Expenses",       icon: Icon.receipt },
-  { id: "profit",    label: "Profitability",  icon: Icon.chart },
+  { id: "dashboard",      label: "Overview",        icon: Icon.dashboard, path: "/dashboard" },
+  { id: "invoices",       label: "Invoices",        icon: Icon.invoice,   path: "/invoices" },
+  { id: "board",          label: "Assignments",     icon: Icon.board,     path: "/board" },
+  { id: "approvals",      label: "Approvals",       icon: Icon.checkCircle, path: "/approvals" },
+  { id: "payroll",        label: "Payroll",         icon: Icon.payroll,   path: "/payroll" },
+  { id: "subcontractors", label: "Subcontractors",  icon: Icon.user,      path: "/subcontractors" },
+  { id: "expenses",       label: "Expenses",        icon: Icon.receipt,   path: "/expenses" },
+  { id: "profitability",  label: "Profitability",   icon: Icon.chart,     path: "/profitability" },
 ];
 
 interface SidebarProps {
-  page: Page;
-  setPage: (p: Page) => void;
+  badges: { board: number; approvals: number };
   accent: string;
-  onRoleSwitch: () => void;
+  onPreviewMobile: () => void;
   onLogout: () => void;
-  invoices: Invoice[];
 }
 
-export function Sidebar({ page, setPage, accent, onRoleSwitch, onLogout, invoices }: SidebarProps) {
-  const allLines = invoices.flatMap((i) => i.lines);
-  const awaitingApproval = allLines.filter((l) => l.status === "submitted").length;
-  const unassigned = allLines.filter((l) => l.status === "unassigned").length;
+export function Sidebar({ badges, accent, onPreviewMobile, onLogout }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
 
-  const badges: Record<string, { count: number; color?: string }> = {
-    board: { count: unassigned },
-    approvals: { count: awaitingApproval, color: "#8a5a1a" },
+  const badgeMap: Record<string, { count: number; color?: string }> = {
+    board:     { count: badges.board },
+    approvals: { count: badges.approvals, color: "#8a5a1a" },
   };
 
   return (
@@ -52,8 +46,8 @@ export function Sidebar({ page, setPage, accent, onRoleSwitch, onLogout, invoice
 
       <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
         {items.map((it) => {
-          const active = page === it.id;
-          const badge = badges[it.id];
+          const active = pathname === it.path || (it.path === "/invoices" && pathname.startsWith("/invoices/"));
+          const badge = badgeMap[it.id];
           return (
             <NavItem
               key={it.id}
@@ -63,7 +57,7 @@ export function Sidebar({ page, setPage, accent, onRoleSwitch, onLogout, invoice
               accent={accent}
               badge={badge?.count || null}
               badgeColor={badge?.color}
-              onClick={() => setPage(it.id)}
+              onClick={() => router.push(it.path)}
             />
           );
         })}
@@ -71,7 +65,7 @@ export function Sidebar({ page, setPage, accent, onRoleSwitch, onLogout, invoice
 
       <div style={{ flex: 1 }} />
 
-      <button onClick={onRoleSwitch} style={{
+      <button onClick={onPreviewMobile} style={{
         display: "flex", alignItems: "center", gap: 10, padding: 10, cursor: "pointer",
         border: "1px dashed #dcd9d2", borderRadius: 8, background: "transparent", fontFamily: "inherit",
         color: "#6b6860", fontSize: 11.5, marginBottom: 8, textAlign: "left",
@@ -138,6 +132,3 @@ function NavItem({
     </button>
   );
 }
-
-// Subcontractor avatar export for mobile sub selector
-export { Avatar };

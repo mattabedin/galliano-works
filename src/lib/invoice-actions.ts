@@ -425,6 +425,14 @@ export async function markWorkLinesPaid(workLineIds: string[]): Promise<void> {
   revalidatePath("/");
 }
 
+export async function getBadgeCounts(): Promise<{ board: number; approvals: number }> {
+  const [board, approvals] = await Promise.all([
+    prisma.workLine.count({ where: { workStatus: "unassigned" } }),
+    prisma.workLine.count({ where: { workStatus: "submitted" } }),
+  ]);
+  return { board, approvals };
+}
+
 export async function updateWorkLine(
   id: string,
   data: {
