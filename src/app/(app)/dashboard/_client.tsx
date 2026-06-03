@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Invoice, Sub } from "@/lib/types";
+import { InvoiceRecordData } from "@/lib/invoice-types";
 import { DashboardScreen } from "@/components/screens/DashboardScreen";
 
 const ACCENT = "#c94a2a";
 
-export function DashboardClient({ invoices, subs }: { invoices: Invoice[]; subs: Sub[] }) {
+export function DashboardClient({ invoices, subs, invoiceRecords }: { invoices: Invoice[]; subs: Sub[]; invoiceRecords: InvoiceRecordData[] }) {
   const router = useRouter();
   const [role, setRole] = useState<"admin" | "supervisor">("admin");
 
@@ -20,6 +21,7 @@ export function DashboardClient({ invoices, subs }: { invoices: Invoice[]; subs:
     <DashboardScreen
       invoices={invoices}
       subs={subs}
+      invoiceRecords={invoiceRecords}
       accent={ACCENT}
       role={role}
       goto={(page) => {

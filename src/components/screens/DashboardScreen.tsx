@@ -1,6 +1,7 @@
 "use client";
 
 import { Invoice, Sub, lineLabor, lineProfit, invoiceTotals, fmt$ } from "@/lib/types";
+import { InvoiceRecordData, WorkLineData } from "@/lib/invoice-types";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Btn } from "@/components/ui/Btn";
@@ -10,12 +11,13 @@ import { Icon } from "@/components/ui/Icons";
 interface Props {
   invoices: Invoice[];
   subs: Sub[];
+  invoiceRecords?: InvoiceRecordData[];
   accent: string;
   role?: "admin" | "supervisor";
   goto: (page: string) => void;
 }
 
-export function DashboardScreen({ invoices, subs, accent, role = "admin", goto }: Props) {
+export function DashboardScreen({ invoices, subs, invoiceRecords = [], accent, role = "admin", goto }: Props) {
   const isSupervisor = role === "supervisor";
   const allLines = invoices.flatMap((i) => i.lines);
   const byStatus = (s: string) => allLines.filter((l) => l.status === s).length;
@@ -151,39 +153,72 @@ export function DashboardScreen({ invoices, subs, accent, role = "admin", goto }
 
       <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
         {/* Activity list */}
-        <Card pad={0}>
-          <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Recent activity</div>
-            <button onClick={() => goto("approvals")} style={{ fontSize: 12, color: "#6b6860", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4 }}>
-              View all <Icon.chevronR />
-            </button>
-          </div>
-          <Divider />
-          <div>
-            {allLines.filter((l) => ["submitted", "in_progress", "approved"].includes(l.status)).slice(0, 6).map((l, i, arr) => {
+        {(() => {
+          // Legacy line items with actionable statuses
+          const legacyItems = allLines
+            .filter((l) => ["submitted", "in_progress", "approved"].includes(l.status))
+            .map((l) => {
               const sub = l.sub || subs.find((s) => s.id === l.subId) || null;
               const inv = invoices.find((x) => x.lines.some((ll) => ll.id === l.id));
-              return (
-                <div key={l.id} onClick={() => inv?.id && goto("invoices/" + inv.id)} style={{ padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, borderBottom: i < arr.length - 1 ? "1px solid #f4f2ec" : "none", cursor: inv?.id ? "pointer" : "default", transition: "background 100ms" }}
-                  onMouseEnter={(e) => { if (inv?.id) (e.currentTarget as HTMLElement).style.background = "#fafaf8"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-                  <Avatar sub={sub} size={28} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: "#1a1814", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      <b style={{ fontWeight: 500 }}>{sub?.name}</b> · {l.desc}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: "#8a8780", marginTop: 2 }}>
-                      {inv?.number} · {inv?.client}
-                    </div>
-                  </div>
-                  {!isSupervisor && <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{fmt$(lineLabor(l))}</div>}
-                  <StatusPill status={l.status} size="sm" />
-                  <Icon.chevronR style={{ color: "#c8c4bc", flexShrink: 0 }} />
+              const dest = l.status === "in_progress" ? "board" : "approvals";
+              return { key: l.id, type: "legacy" as const, desc: l.desc, subName: sub?.name || "Unassigned", sub, ref: inv?.number, client: inv?.client, amount: lineLabor(l), status: l.status, goto: () => goto(dest) };
+            });
+
+          // WorkLines with actionable statuses
+          const wlItems = invoiceRecords.flatMap((rec) =>
+            rec.lineItems.flatMap((li) =>
+              li.workLines
+                .filter((wl) => ["submitted", "in_progress", "assigned", "approved"].includes(wl.workStatus))
+                .map((wl) => {
+                  const sub = wl.assignedSub;
+                  const subProxy = sub ? { id: sub.id, name: sub.name, color: sub.color, initials: sub.initials, trade: "", rate: 0 } : null;
+                  return { key: wl.id, type: "workline" as const, desc: wl.title, subName: sub?.name || "Unassigned", sub: subProxy, ref: rec.invoiceNumber, client: rec.customerName, amount: wl.payAmount ?? wl.invoiceLineAmount, status: wl.workStatus, goto: () => goto("invoices/" + rec.id) };
+                })
+            )
+          );
+
+          const statusOrder: Record<string, number> = { submitted: 0, in_progress: 1, assigned: 2, approved: 3 };
+          const allActivity = [...legacyItems, ...wlItems].sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+
+          return (
+            <Card pad={0}>
+              <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Recent activity</div>
+                  <div style={{ fontSize: 11.5, color: "#8a8780", marginTop: 2 }}>{allActivity.length} active items</div>
                 </div>
-              );
-            })}
-          </div>
-        </Card>
+                <button onClick={() => goto("approvals")} style={{ fontSize: 12, color: "#6b6860", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4 }}>
+                  Approvals <Icon.chevronR />
+                </button>
+              </div>
+              <Divider />
+              <div style={{ maxHeight: 420, overflowY: "auto" }}>
+                {allActivity.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: "#a8a49c", fontSize: 13 }}>No active work items</div>
+                ) : (
+                  allActivity.map((item, i) => (
+                    <div key={item.key} onClick={item.goto} style={{ padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, borderBottom: i < allActivity.length - 1 ? "1px solid #f4f2ec" : "none", cursor: "pointer", transition: "background 100ms" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#fafaf8"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                      <Avatar sub={item.sub} size={28} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: "#1a1814", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <b style={{ fontWeight: 500 }}>{item.subName}</b> · {item.desc}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: "#8a8780", marginTop: 2 }}>
+                          {item.ref} · {item.client}
+                        </div>
+                      </div>
+                      {!isSupervisor && <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{fmt$(item.amount)}</div>}
+                      <StatusPill status={item.status as "submitted" | "in_progress" | "assigned" | "approved"} size="sm" />
+                      <Icon.chevronR style={{ color: "#c8c4bc", flexShrink: 0 }} />
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          );
+        })()}
 
         {/* Sub rankings */}
         <Card pad={0}>
