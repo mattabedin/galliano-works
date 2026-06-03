@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, LogoMark } from "@/components/ui/Icons";
 
-const SUPERVISOR_HIDDEN = new Set(["invoices", "payroll", "pricing", "expenses", "profitability"]);
+const SUPERVISOR_HIDDEN = new Set(["invoices", "payroll", "pricing", "expenses", "profitability", "users"]);
 
 const items = [
   { id: "dashboard",      label: "Overview",        icon: Icon.dashboard,   path: "/dashboard" },
@@ -17,6 +17,7 @@ const items = [
   { id: "pricing",        label: "Price List",      icon: Icon.tag,         path: "/pricing" },
   { id: "expenses",       label: "Expenses",        icon: Icon.receipt,     path: "/expenses" },
   { id: "profitability",  label: "Profitability",   icon: Icon.chart,       path: "/profitability" },
+  { id: "users",          label: "Users",           icon: Icon.users,       path: "/users" },
 ];
 
 interface SidebarProps {
