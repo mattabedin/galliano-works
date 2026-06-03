@@ -17,6 +17,8 @@ const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   "/subcontractors": { title: "Subcontractors",   sub: "Earnings & history" },
   "/expenses":       { title: "Expenses",         sub: "Materials, travel, other" },
   "/profitability":  { title: "Profitability",    sub: "Per invoice & line" },
+  "/quotes":         { title: "Quotes",           sub: "Subcontractor quote requests" },
+  "/pricing":        { title: "Price List",       sub: "Standard job pricing" },
   "/mobile":         { title: "Mobile Preview",   sub: "Subcontractor view" },
 };
 

@@ -5,14 +5,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon, LogoMark } from "@/components/ui/Icons";
 
 const items = [
-  { id: "dashboard",      label: "Overview",        icon: Icon.dashboard, path: "/dashboard" },
-  { id: "invoices",       label: "Invoices",        icon: Icon.invoice,   path: "/invoices" },
-  { id: "board",          label: "Assignments",     icon: Icon.board,     path: "/board" },
+  { id: "dashboard",      label: "Overview",        icon: Icon.dashboard,   path: "/dashboard" },
+  { id: "invoices",       label: "Invoices",        icon: Icon.invoice,     path: "/invoices" },
+  { id: "board",          label: "Assignments",     icon: Icon.board,       path: "/board" },
   { id: "approvals",      label: "Approvals",       icon: Icon.checkCircle, path: "/approvals" },
-  { id: "payroll",        label: "Payroll",         icon: Icon.payroll,   path: "/payroll" },
-  { id: "subcontractors", label: "Subcontractors",  icon: Icon.user,      path: "/subcontractors" },
-  { id: "expenses",       label: "Expenses",        icon: Icon.receipt,   path: "/expenses" },
-  { id: "profitability",  label: "Profitability",   icon: Icon.chart,     path: "/profitability" },
+  { id: "quotes",         label: "Quotes",          icon: Icon.fileCheck,   path: "/quotes" },
+  { id: "payroll",        label: "Payroll",         icon: Icon.payroll,     path: "/payroll" },
+  { id: "subcontractors", label: "Subcontractors",  icon: Icon.user,        path: "/subcontractors" },
+  { id: "pricing",        label: "Price List",      icon: Icon.tag,         path: "/pricing" },
+  { id: "expenses",       label: "Expenses",        icon: Icon.receipt,     path: "/expenses" },
+  { id: "profitability",  label: "Profitability",   icon: Icon.chart,       path: "/profitability" },
 ];
 
 interface SidebarProps {

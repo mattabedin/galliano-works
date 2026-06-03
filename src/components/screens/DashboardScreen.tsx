@@ -111,7 +111,9 @@ export function DashboardScreen({ invoices, subs, accent, goto }: Props) {
               const sub = l.sub || subs.find((s) => s.id === l.subId) || null;
               const inv = invoices.find((x) => x.lines.some((ll) => ll.id === l.id));
               return (
-                <div key={l.id} style={{ padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, borderBottom: i < arr.length - 1 ? "1px solid #f4f2ec" : "none" }}>
+                <div key={l.id} onClick={() => inv?.id && goto("invoices/" + inv.id)} style={{ padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, borderBottom: i < arr.length - 1 ? "1px solid #f4f2ec" : "none", cursor: inv?.id ? "pointer" : "default", transition: "background 100ms" }}
+                  onMouseEnter={(e) => { if (inv?.id) (e.currentTarget as HTMLElement).style.background = "#fafaf8"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
                   <Avatar sub={sub} size={28} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: "#1a1814", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -123,6 +125,7 @@ export function DashboardScreen({ invoices, subs, accent, goto }: Props) {
                   </div>
                   <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{fmt$(lineLabor(l))}</div>
                   <StatusPill status={l.status} size="sm" />
+                  <Icon.chevronR style={{ color: "#c8c4bc", flexShrink: 0 }} />
                 </div>
               );
             })}

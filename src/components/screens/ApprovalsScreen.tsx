@@ -25,6 +25,7 @@ export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [],
   const [, startTransition] = useTransition();
   const [sendBackId, setSendBackId] = useState<string | null>(null);
   const [sendBackNote, setSendBackNote] = useState("");
+  const [viewInvId, setViewInvId] = useState<string | null>(null);
 
   // Legacy LineItems
   const allLines = invoices.flatMap((inv) =>
@@ -159,13 +160,48 @@ export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [],
                           <div style={{ fontSize: 11, color: "#8a8780", marginTop: 1 }}>labor</div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 10, paddingLeft: 46 }}>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10, paddingLeft: 46, flexWrap: "wrap" }}>
                         <Btn variant="success" size="sm" icon={<Icon.check />} onClick={() => approve(l)}>Approve</Btn>
                         <Btn variant="secondary" size="sm" onClick={() => {
                           setSendBackId(sendBackId === l.id ? null : l.id);
                           setSendBackNote("");
                         }}>Send back</Btn>
+                        <Btn variant="ghost" size="sm" icon={<Icon.invoice />} onClick={() => setViewInvId(viewInvId === l.id ? null : l.id)}>
+                          {viewInvId === l.id ? "Hide invoice" : "View invoice"}
+                        </Btn>
                       </div>
+                      {viewInvId === l.id && (() => {
+                        const inv = invoices.find((x) => x.number === l.invNum);
+                        if (!inv) return null;
+                        return (
+                          <div style={{ marginTop: 10, paddingLeft: 46 }}>
+                            <div style={{ background: "#fafaf8", border: "1px solid #ecebe6", borderRadius: 10, overflow: "hidden" }}>
+                              <div style={{ padding: "12px 16px", borderBottom: "1px solid #ecebe6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 600 }}>{inv.number} · {inv.client}</div>
+                                  <div style={{ fontSize: 11, color: "#8a8780", marginTop: 2 }}>{inv.address}</div>
+                                </div>
+                                <div style={{ fontSize: 12, color: "#8a8780" }}>{inv.lines.length} line items</div>
+                              </div>
+                              {inv.lines.map((line, li) => {
+                                const lineSub = line.sub || subs.find((s) => s.id === line.subId);
+                                return (
+                                  <div key={line.id} style={{ padding: "10px 16px", borderBottom: li < inv.lines.length - 1 ? "1px solid #f4f2ec" : "none", display: "flex", alignItems: "center", gap: 10 }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: 12.5, color: line.id === l.id ? "#1a1814" : "#6b6860", fontWeight: line.id === l.id ? 600 : 400 }}>{line.desc}</div>
+                                      <div style={{ fontSize: 11, color: "#8a8780", marginTop: 1 }}>{lineSub?.name || "Unassigned"}</div>
+                                    </div>
+                                    <div style={{ fontSize: 12.5, fontWeight: 500, fontVariantNumeric: "tabular-nums", minWidth: 60, textAlign: "right" }}>
+                                      {fmt$(line.invoice)}
+                                    </div>
+                                    <StatusPill status={line.status} size="sm" />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {sendBackId === l.id && (
                         <div style={{ marginTop: 10, paddingLeft: 46 }}>
                           <div style={{ background: "#fef4e0", border: "1px solid #f0d890", borderRadius: 8, padding: "12px 14px" }}>
@@ -223,13 +259,44 @@ export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [],
                           <div style={{ fontSize: 11, color: "#8a8780", marginTop: 1 }}>work line</div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 10, paddingLeft: 46 }}>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10, paddingLeft: 46, flexWrap: "wrap" }}>
                         <Btn variant="success" size="sm" icon={<Icon.check />} onClick={() => approveWorkLine(wl)}>Approve</Btn>
                         <Btn variant="secondary" size="sm" onClick={() => {
                           setSendBackId(sendBackId === wl.id ? null : wl.id);
                           setSendBackNote("");
                         }}>Send back</Btn>
+                        <Btn variant="ghost" size="sm" icon={<Icon.invoice />} onClick={() => setViewInvId(viewInvId === wl.id ? null : wl.id)}>
+                          {viewInvId === wl.id ? "Hide invoice" : "View invoice"}
+                        </Btn>
                       </div>
+                      {viewInvId === wl.id && (() => {
+                        const rec = invoiceRecords.find((r) => r.invoiceNumber === (wl as WorkLineData & { invoiceNumber: string }).invoiceNumber);
+                        if (!rec) return null;
+                        return (
+                          <div style={{ marginTop: 10, paddingLeft: 46 }}>
+                            <div style={{ background: "#fafaf8", border: "1px solid #e0eef0", borderRadius: 10, overflow: "hidden" }}>
+                              <div style={{ padding: "12px 16px", borderBottom: "1px solid #e0eef0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 600 }}>{rec.invoiceNumber} · {rec.customerName}</div>
+                                  <div style={{ fontSize: 11, color: "#8a8780", marginTop: 2 }}>{rec.serviceAddress || rec.customerAddress}</div>
+                                </div>
+                                <div style={{ fontSize: 12, color: "#5a7a80" }}>{rec.lineItems.length} line item{rec.lineItems.length !== 1 ? "s" : ""}</div>
+                              </div>
+                              {rec.lineItems.map((li, idx) => (
+                                <div key={li.id} style={{ padding: "10px 16px", borderBottom: idx < rec.lineItems.length - 1 ? "1px solid #f4f2ec" : "none" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                    <div>
+                                      <div style={{ fontSize: 12.5, fontWeight: 500 }}>{li.description}</div>
+                                      <div style={{ fontSize: 11, color: "#8a8780", marginTop: 2 }}>{li.workLines.length} work line{li.workLines.length !== 1 ? "s" : ""}</div>
+                                    </div>
+                                    <div style={{ fontSize: 12.5, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{fmt$(li.lineTotal)}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {sendBackId === wl.id && (
                         <div style={{ marginTop: 10, paddingLeft: 46 }}>
                           <div style={{ background: "#fef4e0", border: "1px solid #f0d890", borderRadius: 8, padding: "12px 14px" }}>
