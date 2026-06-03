@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import {
   InvoiceRecordData,
   InvoiceLineItemData,
@@ -302,6 +303,15 @@ export async function unassignWorkLine(workLineId: string): Promise<void> {
 export async function updateWorkLineStatus(workLineId: string, status: string): Promise<void> {
   UpdateWorkLineStatusSchema.parse({ workLineId, status });
   await transitionWorkLineStatus(workLineId, status);
+  revalidatePath("/");
+}
+
+export async function sendBackWorkLine(workLineId: string, note: string): Promise<void> {
+  z.string().min(1).parse(workLineId);
+  await prisma.workLine.update({
+    where: { id: workLineId },
+    data: { workStatus: "in_progress", adminNotes: note || null },
+  });
   revalidatePath("/");
 }
 

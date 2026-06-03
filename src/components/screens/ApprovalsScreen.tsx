@@ -10,7 +10,7 @@ import { Card, Divider } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 import { approveLineItem, rejectLineItem, approveAllSubmitted } from "@/lib/actions";
-import { updateWorkLineStatus } from "@/lib/invoice-actions";
+import { updateWorkLineStatus, sendBackWorkLine } from "@/lib/invoice-actions";
 
 interface Props {
   invoices: Invoice[];
@@ -23,6 +23,8 @@ interface Props {
 export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [], onRefresh }: Props) {
   const [toast, showToast] = useToast();
   const [, startTransition] = useTransition();
+  const [sendBackId, setSendBackId] = useState<string | null>(null);
+  const [sendBackNote, setSendBackNote] = useState("");
 
   // Legacy LineItems
   const allLines = invoices.flatMap((inv) =>
@@ -56,10 +58,16 @@ export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [],
     startTransition(async () => { await approveLineItem(l.id); });
   };
 
-  const reject = (l: typeof allLines[0]) => {
-    updateStatus(l.id, "in_progress");
+  const reject = (l: typeof allLines[0], note?: string) => {
+    const updated = invoices.map((inv) => ({
+      ...inv,
+      lines: inv.lines.map((line) =>
+        line.id === l.id ? { ...line, status: "in_progress" as const, note: note || line.note } : line
+      ),
+    }));
+    onUpdate(updated);
     showToast("Sent back to subcontractor");
-    startTransition(async () => { await rejectLineItem(l.id); });
+    startTransition(async () => { await rejectLineItem(l.id, note); });
   };
 
   const approveAll = () => {
@@ -80,10 +88,10 @@ export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [],
     });
   };
 
-  const rejectWorkLine = (wl: WorkLineData) => {
+  const rejectWorkLine = (wl: WorkLineData, note?: string) => {
     showToast("Sent back to subcontractor");
     startTransition(async () => {
-      await updateWorkLineStatus(wl.id, "in_progress");
+      await sendBackWorkLine(wl.id, note || "");
       onRefresh?.();
     });
   };
@@ -153,9 +161,35 @@ export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [],
                       </div>
                       <div style={{ display: "flex", gap: 8, marginTop: 10, paddingLeft: 46 }}>
                         <Btn variant="success" size="sm" icon={<Icon.check />} onClick={() => approve(l)}>Approve</Btn>
-                        <Btn variant="secondary" size="sm" onClick={() => reject(l)}>Send back</Btn>
-                        <Btn variant="ghost" size="sm">View details</Btn>
+                        <Btn variant="secondary" size="sm" onClick={() => {
+                          setSendBackId(sendBackId === l.id ? null : l.id);
+                          setSendBackNote("");
+                        }}>Send back</Btn>
                       </div>
+                      {sendBackId === l.id && (
+                        <div style={{ marginTop: 10, paddingLeft: 46 }}>
+                          <div style={{ background: "#fef4e0", border: "1px solid #f0d890", borderRadius: 8, padding: "12px 14px" }}>
+                            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#8a5a1a", display: "block", marginBottom: 6 }}>
+                              Note for subcontractor (required)
+                            </label>
+                            <textarea
+                              value={sendBackNote}
+                              onChange={(e) => setSendBackNote(e.target.value)}
+                              placeholder="Describe what needs to be fixed or completed…"
+                              rows={3}
+                              style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid #e0c878", borderRadius: 6, fontSize: 13, fontFamily: "inherit", resize: "vertical", background: "#fff", outline: "none" }}
+                            />
+                            <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                              <Btn variant="ghost" size="sm" onClick={() => setSendBackId(null)}>Cancel</Btn>
+                              <Btn variant="secondary" size="sm" disabled={!sendBackNote.trim()} onClick={() => {
+                                reject(l, sendBackNote.trim());
+                                setSendBackId(null);
+                                setSendBackNote("");
+                              }}>Confirm send back</Btn>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -191,8 +225,35 @@ export function ApprovalsScreen({ invoices, subs, onUpdate, invoiceRecords = [],
                       </div>
                       <div style={{ display: "flex", gap: 8, marginTop: 10, paddingLeft: 46 }}>
                         <Btn variant="success" size="sm" icon={<Icon.check />} onClick={() => approveWorkLine(wl)}>Approve</Btn>
-                        <Btn variant="secondary" size="sm" onClick={() => rejectWorkLine(wl)}>Send back</Btn>
+                        <Btn variant="secondary" size="sm" onClick={() => {
+                          setSendBackId(sendBackId === wl.id ? null : wl.id);
+                          setSendBackNote("");
+                        }}>Send back</Btn>
                       </div>
+                      {sendBackId === wl.id && (
+                        <div style={{ marginTop: 10, paddingLeft: 46 }}>
+                          <div style={{ background: "#fef4e0", border: "1px solid #f0d890", borderRadius: 8, padding: "12px 14px" }}>
+                            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#8a5a1a", display: "block", marginBottom: 6 }}>
+                              Note for subcontractor (required)
+                            </label>
+                            <textarea
+                              value={sendBackNote}
+                              onChange={(e) => setSendBackNote(e.target.value)}
+                              placeholder="Describe what needs to be fixed or completed…"
+                              rows={3}
+                              style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid #e0c878", borderRadius: 6, fontSize: 13, fontFamily: "inherit", resize: "vertical", background: "#fff", outline: "none" }}
+                            />
+                            <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                              <Btn variant="ghost" size="sm" onClick={() => setSendBackId(null)}>Cancel</Btn>
+                              <Btn variant="secondary" size="sm" disabled={!sendBackNote.trim()} onClick={() => {
+                                rejectWorkLine(wl, sendBackNote.trim());
+                                setSendBackId(null);
+                                setSendBackNote("");
+                              }}>Confirm send back</Btn>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

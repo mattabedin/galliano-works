@@ -143,6 +143,7 @@ export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUp
                   address={l.address}
                   pay={fmt$(lineLabor(l))}
                   status={l.status as "assigned" | "in_progress" | "submitted"}
+                  adminNote={l.note || undefined}
                   onStart={() => { setLegacyStatus(l.id, "in_progress"); showToast("Marked as in progress"); }}
                   onComplete={(notes) => { setLegacyStatus(l.id, "submitted"); showToast("Sent for approval", "success"); }}
                 />
@@ -157,6 +158,7 @@ export function MobileSubScreen({ invoices, subs, payHistory, currentSubId, onUp
                   address={wl.serviceAddress || undefined}
                   pay={fmt$(wl.payAmount ?? wl.invoiceLineAmount)}
                   status={wl.workStatus as "assigned" | "in_progress" | "submitted"}
+                  adminNote={wl.adminNotes || undefined}
                   onStart={() => { setWorkLineStatus(wl.id, "in_progress"); showToast("Marked as in progress"); }}
                   onComplete={(notes) => { setWorkLineStatus(wl.id, "submitted", notes); showToast("Sent for approval", "success"); }}
                 />
@@ -215,6 +217,7 @@ function MobileJobCard({
   address,
   pay,
   status,
+  adminNote,
   onStart,
   onComplete,
 }: {
@@ -225,6 +228,7 @@ function MobileJobCard({
   address?: string;
   pay: string;
   status: "assigned" | "in_progress" | "submitted" | "completed";
+  adminNote?: string;
   onStart: () => void;
   onComplete: (notes: string) => void;
 }) {
@@ -234,7 +238,16 @@ function MobileJobCard({
   const pillStatus = status === "completed" ? "submitted" : status;
 
   return (
-    <div style={{ background: "#fff", border: kind === "workline" ? "1px solid #e0eef0" : "1px solid #ecebe6", borderRadius: 12, overflow: "hidden" }}>
+    <div style={{ background: "#fff", border: adminNote ? "1.5px solid #f0d890" : kind === "workline" ? "1px solid #e0eef0" : "1px solid #ecebe6", borderRadius: 12, overflow: "hidden" }}>
+      {adminNote && (
+        <div style={{ background: "#fef4e0", borderBottom: "1px solid #f0d890", padding: "10px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#8a5a1a", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 3 }}>Note from admin</div>
+            <div style={{ fontSize: 12.5, color: "#5a3a0a", lineHeight: 1.45 }}>{adminNote}</div>
+          </div>
+        </div>
+      )}
       <div onClick={() => setExpanded(!expanded)} style={{ padding: 14, cursor: "pointer" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>

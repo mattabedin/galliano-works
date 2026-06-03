@@ -35,11 +35,11 @@ export async function approveLineItem(lineId: string) {
   revalidatePath("/");
 }
 
-export async function rejectLineItem(lineId: string) {
+export async function rejectLineItem(lineId: string, note?: string) {
   z.string().min(1).parse(lineId);
   await prisma.lineItem.update({
     where: { id: lineId },
-    data: { status: "in_progress" },
+    data: { status: "in_progress", ...(note !== undefined ? { note } : {}) },
   });
   revalidatePath("/");
 }
