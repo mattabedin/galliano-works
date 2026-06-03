@@ -8,7 +8,7 @@ const ACCENT = "#c94a2a";
 export default function LoginPage() {
   const router = useRouter();
 
-  const handleLogin = (role: "admin" | "subcontractor") => {
+  const handleLogin = (role: "admin" | "supervisor" | "subcontractor") => {
     localStorage.setItem("galliano-auth", "true");
     localStorage.setItem("galliano-role", role);
     router.push(role === "subcontractor" ? "/mobile" : "/dashboard");

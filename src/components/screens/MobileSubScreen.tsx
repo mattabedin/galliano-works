@@ -373,12 +373,12 @@ function MobileJobCard({
   const pillStatus = status === "completed" ? "submitted" : status;
 
   const PRICE_LIST = [
-    { label: "-- Select from price list --", value: "", disabled: true },
-    { label: "HVAC filter replacement — $180", value: "HVAC filter replacement — $180" },
-    { label: "Electrical troubleshooting — $95/hr", value: "Electrical troubleshooting — $95/hr" },
-    { label: "Plumbing drain clearing — $350", value: "Plumbing drain clearing — $350" },
-    { label: "Interior painting (per room) — $280", value: "Interior painting (per room) — $280" },
-    { label: "General inspection — $120", value: "General inspection — $120" },
+    { label: "-- Select service type --", value: "", disabled: true },
+    { label: "HVAC filter replacement", value: "HVAC filter replacement" },
+    { label: "Electrical troubleshooting", value: "Electrical troubleshooting" },
+    { label: "Plumbing drain clearing", value: "Plumbing drain clearing" },
+    { label: "Interior painting (per room)", value: "Interior painting (per room)" },
+    { label: "General inspection", value: "General inspection" },
     { label: "Custom / other", value: "custom" },
   ];
 
@@ -424,8 +424,7 @@ function MobileJobCard({
             {address && <div style={{ fontSize: 11, color: "#8a8780", marginTop: 2 }}>📍 {address}</div>}
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{displayPay}</div>
-            <div style={{ marginTop: 6 }}><StatusPill status={pillStatus} size="sm" /></div>
+            <StatusPill status={pillStatus} size="sm" />
           </div>
         </div>
       </div>

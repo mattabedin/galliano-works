@@ -4,6 +4,8 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, LogoMark } from "@/components/ui/Icons";
 
+const SUPERVISOR_HIDDEN = new Set(["invoices", "payroll", "pricing", "expenses", "profitability"]);
+
 const items = [
   { id: "dashboard",      label: "Overview",        icon: Icon.dashboard,   path: "/dashboard" },
   { id: "invoices",       label: "Invoices",        icon: Icon.invoice,     path: "/invoices" },
@@ -20,11 +22,12 @@ const items = [
 interface SidebarProps {
   badges: { board: number; approvals: number };
   accent: string;
+  role?: "admin" | "supervisor" | "subcontractor";
   onPreviewMobile: () => void;
   onLogout: () => void;
 }
 
-export function Sidebar({ badges, accent, onPreviewMobile, onLogout }: SidebarProps) {
+export function Sidebar({ badges, accent, role = "admin", onPreviewMobile, onLogout }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -32,6 +35,12 @@ export function Sidebar({ badges, accent, onPreviewMobile, onLogout }: SidebarPr
     board:     { count: badges.board },
     approvals: { count: badges.approvals, color: "#8a5a1a" },
   };
+
+  const visibleItems = role === "supervisor"
+    ? items.filter((it) => !SUPERVISOR_HIDDEN.has(it.id))
+    : items;
+
+  const isSupervisor = role === "supervisor";
 
   return (
     <div style={{
@@ -42,12 +51,21 @@ export function Sidebar({ badges, accent, onPreviewMobile, onLogout }: SidebarPr
         <LogoMark accent={accent} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em" }}>Bel Etage Systems</div>
-          <div style={{ fontSize: 10.5, color: "#8a8780", marginTop: 1 }}>Admin · Snellville, GA</div>
+          <div style={{ fontSize: 10.5, color: "#8a8780", marginTop: 1 }}>
+            {isSupervisor ? "Supervisor · Snellville, GA" : "Admin · Snellville, GA"}
+          </div>
         </div>
       </div>
 
+      {isSupervisor && (
+        <div style={{ margin: "0 0 10px", padding: "8px 10px", borderRadius: 8, background: "#f0ebf7", border: "1px solid #d8d0eb", display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7b5ea7", flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: "#5c3d8a", fontWeight: 500 }}>Supervisor view — financials hidden</span>
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        {items.map((it) => {
+        {visibleItems.map((it) => {
           const active = pathname === it.path || (it.path === "/invoices" && pathname.startsWith("/invoices/"));
           const badge = badgeMap[it.id];
           return (
@@ -67,23 +85,27 @@ export function Sidebar({ badges, accent, onPreviewMobile, onLogout }: SidebarPr
 
       <div style={{ flex: 1 }} />
 
-      <button onClick={onPreviewMobile} style={{
-        display: "flex", alignItems: "center", gap: 10, padding: 10, cursor: "pointer",
-        border: "1px dashed #dcd9d2", borderRadius: 8, background: "transparent", fontFamily: "inherit",
-        color: "#6b6860", fontSize: 11.5, marginBottom: 8, textAlign: "left",
-      }}>
-        <div style={{ width: 24, height: 24, borderRadius: 6, background: "#1a1814", color: "#fafaf8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>◱</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, color: "#4a4740" }}>Preview mobile</div>
-          <div style={{ fontSize: 10.5 }}>See the sub&apos;s view</div>
-        </div>
-      </button>
+      {!isSupervisor && (
+        <button onClick={onPreviewMobile} style={{
+          display: "flex", alignItems: "center", gap: 10, padding: 10, cursor: "pointer",
+          border: "1px dashed #dcd9d2", borderRadius: 8, background: "transparent", fontFamily: "inherit",
+          color: "#6b6860", fontSize: 11.5, marginBottom: 8, textAlign: "left",
+        }}>
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: "#1a1814", color: "#fafaf8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>◱</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, color: "#4a4740" }}>Preview mobile</div>
+            <div style={{ fontSize: 10.5 }}>See the sub&apos;s view</div>
+          </div>
+        </button>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 9, padding: 8, borderRadius: 8, background: "#fff", border: "1px solid #ecebe6" }}>
-        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#1a1814", color: "#fafaf8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 600 }}>JG</div>
+        <div style={{ width: 26, height: 26, borderRadius: "50%", background: isSupervisor ? "#5c3d8a" : "#1a1814", color: "#fafaf8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 600 }}>
+          {isSupervisor ? "MS" : "JG"}
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 600 }}>Jolene Galliano</div>
-          <div style={{ fontSize: 10, color: "#8a8780" }}>Owner</div>
+          <div style={{ fontSize: 11.5, fontWeight: 600 }}>{isSupervisor ? "Marcus Stone" : "Jolene Galliano"}</div>
+          <div style={{ fontSize: 10, color: "#8a8780" }}>{isSupervisor ? "Supervisor" : "Owner"}</div>
         </div>
         <button onClick={onLogout} style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: "#8a8780" }}>
           <Icon.logout />

@@ -11,10 +11,12 @@ interface Props {
   invoices: Invoice[];
   subs: Sub[];
   accent: string;
+  role?: "admin" | "supervisor";
   goto: (page: string) => void;
 }
 
-export function DashboardScreen({ invoices, subs, accent, goto }: Props) {
+export function DashboardScreen({ invoices, subs, accent, role = "admin", goto }: Props) {
+  const isSupervisor = role === "supervisor";
   const allLines = invoices.flatMap((i) => i.lines);
   const byStatus = (s: string) => allLines.filter((l) => l.status === s).length;
 
@@ -42,58 +44,109 @@ export function DashboardScreen({ invoices, subs, accent, goto }: Props) {
   return (
     <div style={{ padding: "24px 28px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
       {/* Hero stat */}
-      <div style={{
-        background: "linear-gradient(135deg, #1f1c18 0%, #2b2520 100%)",
-        color: "#faf8f4", borderRadius: 16, padding: "26px 28px",
-        display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 24, position: "relative", overflow: "hidden",
-      }}>
-        <div>
-          <div style={{ fontSize: 10.5, opacity: 0.55, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Payroll this week</div>
-          <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 64, fontWeight: 400, letterSpacing: "-0.02em", marginTop: 6, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-            {fmt$(weekPayroll)}
+      {isSupervisor ? (
+        <div style={{
+          background: "linear-gradient(135deg, #1f1c18 0%, #2b2520 100%)",
+          color: "#faf8f4", borderRadius: 16, padding: "26px 28px",
+          display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 24,
+        }}>
+          <div>
+            <div style={{ fontSize: 10.5, opacity: 0.55, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Operations this week</div>
+            <div style={{ marginTop: 14, display: "flex", gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>{openWork}</div>
+                <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>active jobs</div>
+              </div>
+              <div style={{ width: 1, background: "rgba(255,255,255,0.12)" }} />
+              <div>
+                <div style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-0.02em", color: "#f0d890", fontVariantNumeric: "tabular-nums" }}>{awaitingApproval}</div>
+                <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>pending review</div>
+              </div>
+              <div style={{ width: 1, background: "rgba(255,255,255,0.12)" }} />
+              <div>
+                <div style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-0.02em", color: "#7fd19f", fontVariantNumeric: "tabular-nums" }}>{weekApproved.length}</div>
+                <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>approved</div>
+              </div>
+            </div>
+            <div style={{ marginTop: 18, display: "flex", gap: 8 }}>
+              <Btn variant="ghost" size="md" icon={<Icon.checkCircle />} onClick={() => goto("approvals")} style={{ color: "#faf8f4", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                Review approvals
+              </Btn>
+              <Btn variant="ghost" size="md" icon={<Icon.board />} onClick={() => goto("board")} style={{ color: "#faf8f4", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                Assignments
+              </Btn>
+            </div>
           </div>
-          <div style={{ fontSize: 13, opacity: 0.7, marginTop: 10, display: "flex", gap: 16 }}>
-            <span><b style={{ color: "#faf8f4" }}>{weekApproved.length}</b> approved items</span>
-            <span><b style={{ color: "#faf8f4" }}>{awaitingApproval}</b> pending review</span>
-            <span style={{ opacity: 0.6 }}>Pays out Fri, Apr 25</span>
-          </div>
-          <div style={{ marginTop: 18, display: "flex", gap: 8 }}>
-            <Btn variant="primary" size="md" icon={<Icon.payroll />} onClick={() => goto("payroll")} style={{ background: accent, borderColor: accent }}>
-              Review & run payroll
-            </Btn>
-            <Btn variant="ghost" size="md" icon={<Icon.upload />} onClick={() => goto("invoices")} style={{ color: "#faf8f4", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
-              Import invoices
-            </Btn>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
-          <div style={{ fontSize: 10.5, opacity: 0.55, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Distribution</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-            {subStats.filter((s) => s.toBePaid > 0).slice(0, 5).map((s) => {
-              const pct = weekPayroll ? (s.toBePaid / weekPayroll) * 100 : 0;
-              return (
-                <div key={s.id} style={{ display: "grid", gridTemplateColumns: "120px 1fr 70px", gap: 10, alignItems: "center", fontSize: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
+            <div style={{ fontSize: 10.5, opacity: 0.55, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Active subcontractors</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+              {subStats.slice(0, 5).map((s) => (
+                <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center", fontSize: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.85 }}>
                     <Avatar sub={s} size={18} />
                     <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name.split(" ")[0]}</span>
                   </div>
-                  <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 999, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: s.color, borderRadius: 999 }} />
-                  </div>
-                  <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", opacity: 0.85 }}>{fmt$(s.toBePaid)}</div>
+                  <span style={{ opacity: 0.6 }}>{s.pending} in progress</span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div style={{
+          background: "linear-gradient(135deg, #1f1c18 0%, #2b2520 100%)",
+          color: "#faf8f4", borderRadius: 16, padding: "26px 28px",
+          display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 24, position: "relative", overflow: "hidden",
+        }}>
+          <div>
+            <div style={{ fontSize: 10.5, opacity: 0.55, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Payroll this week</div>
+            <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 64, fontWeight: 400, letterSpacing: "-0.02em", marginTop: 6, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+              {fmt$(weekPayroll)}
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.7, marginTop: 10, display: "flex", gap: 16 }}>
+              <span><b style={{ color: "#faf8f4" }}>{weekApproved.length}</b> approved items</span>
+              <span><b style={{ color: "#faf8f4" }}>{awaitingApproval}</b> pending review</span>
+              <span style={{ opacity: 0.6 }}>Pays out Fri, Apr 25</span>
+            </div>
+            <div style={{ marginTop: 18, display: "flex", gap: 8 }}>
+              <Btn variant="primary" size="md" icon={<Icon.payroll />} onClick={() => goto("payroll")} style={{ background: accent, borderColor: accent }}>
+                Review & run payroll
+              </Btn>
+              <Btn variant="ghost" size="md" icon={<Icon.upload />} onClick={() => goto("invoices")} style={{ color: "#faf8f4", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                Import invoices
+              </Btn>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
+            <div style={{ fontSize: 10.5, opacity: 0.55, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Distribution</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+              {subStats.filter((s) => s.toBePaid > 0).slice(0, 5).map((s) => {
+                const pct = weekPayroll ? (s.toBePaid / weekPayroll) * 100 : 0;
+                return (
+                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: "120px 1fr 70px", gap: 10, alignItems: "center", fontSize: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.85 }}>
+                      <Avatar sub={s} size={18} />
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name.split(" ")[0]}</span>
+                    </div>
+                    <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 999, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, background: s.color, borderRadius: 999 }} />
+                    </div>
+                    <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", opacity: 0.85 }}>{fmt$(s.toBePaid)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Secondary stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-        <StatCard label="Open work items"     value={String(openWork)}        sub={`${unassigned} to assign`} onClick={() => goto("board")} />
-        <StatCard label="Awaiting approval"   value={String(awaitingApproval)} sub="Needs review" accent="#8a5a1a" onClick={() => goto("approvals")} />
-        <StatCard label="Profit this period"  value={fmt$(profit)}             sub={`${(margin * 100).toFixed(1)}% margin`} accent="#2f6848" onClick={() => goto("profit")} />
+      <div style={{ display: "grid", gridTemplateColumns: isSupervisor ? "repeat(2, 1fr)" : "repeat(3, 1fr)", gap: 12 }}>
+        <StatCard label="Open work items"    value={String(openWork)}         sub={`${unassigned} to assign`} onClick={() => goto("board")} />
+        <StatCard label="Awaiting approval"  value={String(awaitingApproval)} sub="Needs review" accent="#8a5a1a" onClick={() => goto("approvals")} />
+        {!isSupervisor && (
+          <StatCard label="Profit this period" value={fmt$(profit)} sub={`${(margin * 100).toFixed(1)}% margin`} accent="#2f6848" onClick={() => goto("profit")} />
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
@@ -123,7 +176,7 @@ export function DashboardScreen({ invoices, subs, accent, goto }: Props) {
                       {inv?.number} · {inv?.client}
                     </div>
                   </div>
-                  <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{fmt$(lineLabor(l))}</div>
+                  {!isSupervisor && <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{fmt$(lineLabor(l))}</div>}
                   <StatusPill status={l.status} size="sm" />
                   <Icon.chevronR style={{ color: "#c8c4bc", flexShrink: 0 }} />
                 </div>
@@ -135,8 +188,8 @@ export function DashboardScreen({ invoices, subs, accent, goto }: Props) {
         {/* Sub rankings */}
         <Card pad={0}>
           <div style={{ padding: "16px 20px" }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Subcontractor earnings</div>
-            <div style={{ fontSize: 11.5, color: "#8a8780", marginTop: 2 }}>Ready to be paid out this week</div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{isSupervisor ? "Subcontractors" : "Subcontractor earnings"}</div>
+            <div style={{ fontSize: 11.5, color: "#8a8780", marginTop: 2 }}>{isSupervisor ? "Active this week" : "Ready to be paid out this week"}</div>
           </div>
           <Divider />
           {subStats.slice(0, 6).map((s, i, arr) => (
@@ -146,7 +199,7 @@ export function DashboardScreen({ invoices, subs, accent, goto }: Props) {
                 <div style={{ fontSize: 12.5, fontWeight: 500 }}>{s.name}</div>
                 <div style={{ fontSize: 11, color: "#8a8780" }}>{s.trade} · {s.pending} in progress</div>
               </div>
-              <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{fmt$(s.toBePaid)}</div>
+              {!isSupervisor && <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{fmt$(s.toBePaid)}</div>}
             </div>
           ))}
         </Card>

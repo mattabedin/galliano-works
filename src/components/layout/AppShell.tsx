@@ -33,10 +33,13 @@ export function AppShell({ children, badges }: Props) {
   const [authed, setAuthed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [cmdkOpen, setCmdkOpen] = useState(false);
+  const [role, setRole] = useState<"admin" | "supervisor" | "subcontractor">("admin");
 
   useEffect(() => {
     const stored = localStorage.getItem("galliano-auth");
     if (stored === "true") setAuthed(true);
+    const storedRole = localStorage.getItem("galliano-role") as typeof role | null;
+    if (storedRole) setRole(storedRole);
     setMounted(true);
   }, []);
 
@@ -87,6 +90,7 @@ export function AppShell({ children, badges }: Props) {
       <Sidebar
         badges={badges}
         accent={ACCENT}
+        role={role}
         onPreviewMobile={() => router.push("/mobile")}
         onLogout={handleLogout}
       />

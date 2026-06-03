@@ -5,13 +5,13 @@ import { LogoMark } from "@/components/ui/Icons";
 
 interface Props {
   accent: string;
-  onLogin: (role: "admin" | "subcontractor") => void;
+  onLogin: (role: "admin" | "supervisor" | "subcontractor") => void;
 }
 
 export function LoginScreen({ accent, onLogin }: Props) {
   const [email, setEmail] = useState("admin@beletage.com");
   const [password, setPassword] = useState("••••••••");
-  const [role, setRole] = useState<"admin" | "subcontractor">("admin");
+  const [role, setRole] = useState<"admin" | "supervisor" | "subcontractor">("admin");
   const [loading, setLoading] = useState(false);
 
   const submit = (e: React.FormEvent) => {
@@ -59,8 +59,8 @@ export function LoginScreen({ accent, onLogin }: Props) {
 
             <div style={{ marginTop: 4 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "#4a4740", display: "block", marginBottom: 6 }}>Demo: sign in as</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {(["admin", "subcontractor"] as const).map((r) => (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {(["admin", "supervisor", "subcontractor"] as const).map((r) => (
                   <button key={r} type="button" onClick={() => setRole(r)} style={{
                     padding: "10px 12px", borderRadius: 8, cursor: "pointer",
                     border: role === r ? `1.5px solid ${accent}` : "1px solid #dcd9d2",
@@ -70,9 +70,14 @@ export function LoginScreen({ accent, onLogin }: Props) {
                     textAlign: "left",
                     boxShadow: role === r ? `0 0 0 3px ${accent}22` : "none",
                   }}>
-                    <div>{r === "admin" ? "Admin" : "Subcontractor"}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {r === "admin" ? "Admin" : r === "supervisor" ? "Supervisor" : "Subcontractor"}
+                      {r === "supervisor" && (
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0ebf7", color: "#5c3d8a", fontWeight: 600, letterSpacing: "0.04em" }}>RESTRICTED</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 11, color: "#8a8780", fontWeight: 400, marginTop: 2 }}>
-                      {r === "admin" ? "Full access — assign, approve, pay" : "My jobs on mobile"}
+                      {r === "admin" ? "Full access — assign, approve, pay" : r === "supervisor" ? "Operational view — no financial data" : "My jobs on mobile"}
                     </div>
                   </button>
                 ))}
