@@ -39,7 +39,7 @@ export function Sidebar({ badges, accent, onPreviewMobile, onLogout }: SidebarPr
       <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "4px 8px 18px" }}>
         <LogoMark accent={accent} />
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em" }}>Galliano Works</div>
+          <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em" }}>Bel Etage Systems</div>
           <div style={{ fontSize: 10.5, color: "#8a8780", marginTop: 1 }}>Admin · Snellville, GA</div>
         </div>
       </div>

@@ -604,7 +604,7 @@ function ConnectStep({
             </div>
             <div style={{ fontSize: 15.5, fontWeight: 600, marginBottom: 6 }}>Connect to {meta.label}</div>
             <div style={{ fontSize: 13, color: "#6b6860", maxWidth: 380, margin: "0 auto" }}>
-              You&apos;ll be taken to {meta.label} to authorize Galliano Works to read your invoices. No data is modified.
+              You&apos;ll be taken to {meta.label} to authorize Bel Etage Systems to read your invoices. No data is modified.
             </div>
           </div>
 

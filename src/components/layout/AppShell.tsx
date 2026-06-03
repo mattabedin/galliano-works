@@ -62,7 +62,7 @@ export function AppShell({ children, badges }: Props) {
   const isMobile = pathname === "/mobile";
   const isInvoiceDetail = pathname.startsWith("/invoices/");
 
-  let title = "Galliano Works";
+  let title = "Bel Etage Systems";
   let sub = "";
   if (isInvoiceDetail) {
     title = "Invoice Detail";

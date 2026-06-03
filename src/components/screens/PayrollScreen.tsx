@@ -197,7 +197,7 @@ function PayStubPreview({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: 18, borderBottom: "2px solid #1a1814" }}>
             <div>
               <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#8a8780", fontFamily: "ui-monospace, monospace" }}>Payroll summary</div>
-              <div style={{ fontSize: 20, fontWeight: 600, marginTop: 6, letterSpacing: "-0.01em" }}>Galliano Enterprises, Ltd. Co.</div>
+              <div style={{ fontSize: 20, fontWeight: 600, marginTop: 6, letterSpacing: "-0.01em" }}>Bel Etage Systems</div>
               <div style={{ fontSize: 11, color: "#6b6860", marginTop: 2, fontFamily: "ui-monospace, monospace" }}>Week of Apr 20 — Apr 26, 2026</div>
             </div>
             <div style={{ textAlign: "right", fontSize: 10.5, color: "#6b6860", fontFamily: "ui-monospace, monospace", lineHeight: 1.6 }}>
@@ -263,7 +263,7 @@ function PayStubPreview({
           </div>
 
           <div style={{ marginTop: 28, fontSize: 9.5, color: "#8a8780", lineHeight: 1.6, fontFamily: "ui-monospace, monospace" }}>
-            Paid via ACH on Fri, Apr 25, 2026. Questions? Reply to pay@galliano.co. Retain for your 1099 records.
+            Paid via ACH on Fri, Apr 25, 2026. Questions? Reply to pay@beletage.com. Retain for your 1099 records.
           </div>
         </div>
       </div>

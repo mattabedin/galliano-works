@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Galliano Works — Order Tracking & Payroll",
-  description: "Centralized work orders, subcontractor assignments, and weekly payroll for Galliano Enterprises.",
+  title: "Bel Etage Systems — Property Management Platform",
+  description: "Centralized work orders, subcontractor assignments, and weekly payroll for Bel Etage Systems.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

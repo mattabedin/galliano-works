@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function LoginScreen({ accent, onLogin }: Props) {
-  const [email, setEmail] = useState("admin@galliano.co");
+  const [email, setEmail] = useState("admin@beletage.com");
   const [password, setPassword] = useState("••••••••");
   const [role, setRole] = useState<"admin" | "subcontractor">("admin");
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,7 @@ export function LoginScreen({ accent, onLogin }: Props) {
       <div style={{ display: "flex", flexDirection: "column", padding: "48px 56px", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <LogoMark accent={accent} />
-          <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.01em" }}>Galliano Works</span>
+          <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.01em" }}>Bel Etage Systems</span>
         </div>
 
         <div style={{ maxWidth: 360 }}>
@@ -44,7 +44,7 @@ export function LoginScreen({ accent, onLogin }: Props) {
             Sign in to your workspace
           </h1>
           <p style={{ color: "#6b6860", fontSize: 14, marginTop: 10, lineHeight: 1.55 }}>
-            Order tracking & payroll for Galliano Enterprises.
+            Property. People. Performance.
           </p>
 
           <form onSubmit={submit} style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -96,7 +96,7 @@ export function LoginScreen({ accent, onLogin }: Props) {
         </div>
 
         <div style={{ fontSize: 11, color: "#9a968e" }}>
-          © 2026 Galliano Enterprises, Ltd. Co.
+          © 2026 Bel Etage Systems · Powered by Galliano Enterprises, Ltd. Co.
         </div>
       </div>
 
