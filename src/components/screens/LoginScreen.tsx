@@ -5,12 +5,13 @@ import { LogoMark } from "@/components/ui/Icons";
 
 interface Props {
   accent: string;
-  onLogin: (role: "admin" | "supervisor" | "subcontractor") => void;
+  error?: string;
+  onLogin: (role: "admin" | "supervisor" | "subcontractor", email: string, password: string) => void;
 }
 
-export function LoginScreen({ accent, onLogin }: Props) {
-  const [email, setEmail] = useState("admin@beletage.com");
-  const [password, setPassword] = useState("••••••••");
+export function LoginScreen({ accent, error, onLogin }: Props) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "supervisor" | "subcontractor">("admin");
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +19,7 @@ export function LoginScreen({ accent, onLogin }: Props) {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
-      onLogin(role);
+      onLogin(role, email, password);
       setLoading(false);
     }, 450);
   };
@@ -84,11 +85,18 @@ export function LoginScreen({ accent, onLogin }: Props) {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} style={{
-              marginTop: 14, height: 42, borderRadius: 8, border: "none",
-              background: loading ? "#8a5a4a" : accent, color: "#fff",
-              fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-              letterSpacing: "0.01em",
+            {error && (
+              <div style={{ padding: "10px 12px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: 13, color: "#b91c1c" }}>
+                {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading || !email || !password} style={{
+              marginTop: 6, height: 42, borderRadius: 8, border: "none",
+              background: loading ? "#8a5a4a" : (!email || !password) ? "#c8c4bc" : accent,
+              color: "#fff", fontSize: 14, fontWeight: 500,
+              cursor: (!email || !password) ? "not-allowed" : "pointer",
+              fontFamily: "inherit", letterSpacing: "0.01em",
             }}>
               {loading ? "Signing in…" : "Sign in"}
             </button>
