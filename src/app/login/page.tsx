@@ -26,8 +26,8 @@ export default function LoginPage() {
     }
 
     setError("");
-    localStorage.setItem("galliano-auth", "true");
-    localStorage.setItem("galliano-role", match.role);
+    localStorage.setItem("galliano-auth-v2", "true");
+    localStorage.setItem("galliano-role-v2", match.role);
     router.push("/dashboard");
   };
 

@@ -37,9 +37,9 @@ export function AppShell({ children, badges }: Props) {
   const [role, setRole] = useState<"admin" | "supervisor" | "subcontractor">("admin");
 
   useEffect(() => {
-    const stored = localStorage.getItem("galliano-auth");
+    const stored = localStorage.getItem("galliano-auth-v2");
     if (stored === "true") setAuthed(true);
-    const storedRole = localStorage.getItem("galliano-role") as typeof role | null;
+    const storedRole = localStorage.getItem("galliano-role-v2") as typeof role | null;
     if (storedRole) setRole(storedRole);
     setMounted(true);
   }, []);
@@ -54,7 +54,7 @@ export function AppShell({ children, badges }: Props) {
   }, []);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("galliano-auth");
+    localStorage.removeItem("galliano-auth-v2");
     setAuthed(false);
     router.push("/login");
   }, [router]);

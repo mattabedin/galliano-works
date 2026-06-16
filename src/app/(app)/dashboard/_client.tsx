@@ -13,7 +13,7 @@ export function DashboardClient({ invoices, subs, invoiceRecords }: { invoices: 
   const [role, setRole] = useState<"admin" | "supervisor">("admin");
 
   useEffect(() => {
-    const stored = localStorage.getItem("galliano-role");
+    const stored = localStorage.getItem("galliano-role-v2");
     if (stored === "supervisor") setRole("supervisor");
   }, []);
 
